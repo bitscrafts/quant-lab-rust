@@ -1,5 +1,7 @@
 # Learning Quantitative Finance in Rust
 
+**[Download the Book (PDF)](book/build/quant-finance-book.pdf)**
+
 A progressive learning journey from basic Kaggle projects to advanced quant research, implemented from first principles in Rust with a companion LaTeX book.
 
 **Author:** Marcelo Correa

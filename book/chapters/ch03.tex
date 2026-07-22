@@ -102,19 +102,7 @@ Lower shadow: $\min(O, C) - low$
 A candlestick visualizes OHLCV data. Understanding its anatomy is essential:
 
 \marginnote{%
-\begin{tikzpicture}[scale=0.35]
-\draw[thick, ->] (0,0) -- (6,0);
-\draw[thick, ->] (0,0) -- (0,5);
-% Bullish
-\draw[thick] (1,1) -- (1,4);
-\fill[green!60!black] (0.7,1.5) rectangle (1.3,3.5);
-% Bearish
-\draw[thick] (3,1.5) -- (3,4.5);
-\fill[red!70!black] (2.7,2) rectangle (3.3,4);
-% Doji
-\draw[thick] (5,2) -- (5,4);
-\draw[thick, line width=1.5pt] (4.7,3) -- (5.3,3);
-\end{tikzpicture}\\[0.3em]
+\input{figures/candlesticks}\\[0.3em]
 \textbf{Candlesticks}\\
 Green: bullish\\
 Red: bearish\\

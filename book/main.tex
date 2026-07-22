@@ -1,13 +1,19 @@
 % Learning Quantitative Finance in Rust
 % Template: kaobook
 % Compilation: remote via Podman (latex-remote skill)
+%
+% Structure:
+%   book/*.cls, *.sty        - kaobook template files (root for LaTeX compatibility)
+%   book/chapters/*.tex      - chapter content
+%   book/figures/*.tex       - TikZ figures
+%   book/build/              - compiled output
 
 \documentclass[
 	fontsize=10pt,
 	twoside=false,
 	secnumdepth=2,
 	open=any,
-]{kaobook}
+]{kaobook/kaobook}
 
 % Language configuration
 \usepackage[english]{babel}
@@ -44,14 +50,19 @@
 % Fix \refeq conflict before loading kaorefs
 \let\refeq\relax
 
-% kaobook packages
-\usepackage{kaotheorems}
-\usepackage{kaorefs}
-\usepackage{kaobiblio}
+% kaobook packages (from kaobook/ folder)
+\usepackage{kaobook/kaotheorems}
+\usepackage{kaobook/kaorefs}
+\usepackage{kaobook/kaobiblio}
 \addbibresource{references.bib}
 
-% Image paths
+% Image and figure paths
 \graphicspath{{images/}{figures/}{./}}
+
+% TikZ figure path (for \input{figures/...})
+\makeatletter
+\g@addto@macro\input@path{{figures/}}
+\makeatother
 
 % Index
 \makeindex[columns=3, title=Index, intoc]
@@ -346,6 +357,8 @@ cargo run -p qf-01-fraud --example fraud_analysis
 \addpart{Foundations}
 \pagelayout{margin}
 
+% Chapter 0: Foundations (introductory, numbered as 0)
+\setcounter{chapter}{-1}
 \input{chapters/ch00}
 
 \input{chapters/ch01}

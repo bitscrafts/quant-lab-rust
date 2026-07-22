@@ -323,6 +323,14 @@ $\text{AUC} < 0.5$: worse than random
 
 We compute AUC via trapezoidal integration:
 
+% ROC curve figure in margin beside the auc function
+\begin{marginfigure}[-1cm]
+    \centering
+    \input{figures/roc-curve}
+    \caption{ROC curve: the blue line shows classifier performance, dashed line is random guessing. Area under curve (AUC) is shaded.}
+    \label{fig:roc-curve}
+\end{marginfigure}
+
 \begin{lstlisting}[language=Rust]
 pub fn auc(roc_points: &[(f64, f64)]) -> f64 {
     let mut area = 0.0;
@@ -335,19 +343,6 @@ pub fn auc(roc_points: &[(f64, f64)]) -> f64 {
     area
 }
 \end{lstlisting}
-
-\marginnote{%
-\begin{tikzpicture}[scale=0.4]
-\draw[thick, ->] (0,0) -- (5,0) node[right] {\tiny FPR};
-\draw[thick, ->] (0,0) -- (0,5) node[above] {\tiny TPR};
-\draw[dashed, gray] (0,0) -- (5,5);
-\draw[thick, blue] plot[smooth] coordinates {(0,0) (0.3,2) (0.6,3.2) (1,4) (2,4.5) (4,4.9) (5,5)};
-\fill[blue!10] plot[smooth] coordinates {(0,0) (0.3,2) (0.6,3.2) (1,4) (2,4.5) (4,4.9) (5,5)} -- (5,0) -- cycle;
-\end{tikzpicture}\\[0.3em]
-\textbf{ROC Curve}\\
-Blue: classifier\\
-Dashed: random
-}
 
 \begin{keyinsight}
 AUC has a probabilistic interpretation: it equals the probability that a
