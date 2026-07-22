@@ -5,8 +5,10 @@ use std::io::Write;
 use std::path::PathBuf;
 
 fn create_test_csv(filename: &str, content: &str) -> PathBuf {
-    let path = PathBuf::from(format!("../../../../_tmp/{}", filename));
-    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    let mut path = std::env::temp_dir();
+    path.push("quant-lab-tests");
+    fs::create_dir_all(&path).unwrap();
+    path.push(filename);
     let mut file = fs::File::create(&path).unwrap();
     file.write_all(content.as_bytes()).unwrap();
     path
