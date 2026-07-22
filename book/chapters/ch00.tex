@@ -1,0 +1,508 @@
+\chapter{Foundations: Mathematics, Statistics, and Programming}
+\label{ch:foundations}
+
+This chapter establishes the mathematical, statistical, and programming
+foundations needed to understand the rest of the book. If you are already
+comfortable with these topics, feel free to skip ahead and use this chapter
+as a reference.
+
+\section{Why These Foundations Matter}
+
+Quantitative finance sits at the intersection of three disciplines:
+
+\begin{itemize}
+    \item \textbf{Mathematics}: The language of precision---formulas, proofs,
+      and rigorous reasoning
+    \item \textbf{Statistics}: The science of uncertainty---data analysis,
+      probability, and inference
+    \item \textbf{Programming}: The tool of implementation---turning ideas
+      into working systems
+\end{itemize}
+
+\marginnote{%
+\textbf{The Quant Mindset}\\[0.3em]
+A quantitative approach means making decisions based on data and models,
+not intuition or emotion.
+}
+
+You don't need to be an expert in all three to start. This book teaches by
+doing---each concept is introduced when needed and immediately applied.
+
+\section{Mathematical Notation}
+
+Throughout this book, we use standard mathematical notation. Here's a quick
+reference:
+
+\subsection{Sets and Numbers}
+
+\begin{center}
+\begin{tabular}{cl}
+\toprule
+\textbf{Symbol} & \textbf{Meaning} \\
+\midrule
+$\mathbb{R}$ & Real numbers (e.g., $3.14$, $-2.5$, $\sqrt{2}$) \\
+$\mathbb{R}^+$ & Positive real numbers \\
+$\mathbb{Z}$ & Integers ($\ldots, -2, -1, 0, 1, 2, \ldots$) \\
+$\mathbb{N}$ & Natural numbers ($1, 2, 3, \ldots$) \\
+$\in$ & ``is an element of'' (e.g., $x \in \mathbb{R}$ means $x$ is real) \\
+$\forall$ & ``for all'' \\
+$\exists$ & ``there exists'' \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Summation and Products}
+
+\marginnote{%
+\textbf{Summation}\\[0.5em]
+$\displaystyle\sum_{i=1}^{n} x_i = x_1 + x_2 + \cdots + x_n$
+}
+
+The summation symbol $\Sigma$ means ``add up'':
+\[
+\sum_{i=1}^{n} x_i = x_1 + x_2 + \cdots + x_n
+\]
+
+For example, if $x = [2, 5, 3]$, then $\sum_{i=1}^{3} x_i = 2 + 5 + 3 = 10$.
+
+\marginnote{%
+\textbf{Product}\\[0.5em]
+$\displaystyle\prod_{i=1}^{n} x_i = x_1 \times x_2 \times \cdots \times x_n$
+}
+
+The product symbol $\Pi$ means ``multiply together'':
+\[
+\prod_{i=1}^{n} x_i = x_1 \times x_2 \times \cdots \times x_n
+\]
+
+\subsection{Functions and Calculus}
+
+\begin{center}
+\begin{tabular}{cl}
+\toprule
+\textbf{Symbol} & \textbf{Meaning} \\
+\midrule
+$f(x)$ & Function $f$ evaluated at $x$ \\
+$f'(x)$ or $\frac{df}{dx}$ & Derivative of $f$ with respect to $x$ \\
+$\frac{\partial f}{\partial x}$ & Partial derivative (when $f$ has multiple variables) \\
+$\ln(x)$ & Natural logarithm (base $e \approx 2.718$) \\
+$\exp(x)$ or $e^x$ & Exponential function \\
+$\argmax_x f(x)$ & Value of $x$ that maximizes $f$ \\
+$\argmin_x f(x)$ & Value of $x$ that minimizes $f$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{keyinsight}
+The natural logarithm $\ln$ is everywhere in finance. Key property:
+$\ln(a \times b) = \ln(a) + \ln(b)$. This turns multiplication (compounding)
+into addition, making calculations much easier.
+\end{keyinsight}
+
+\section{Statistics Essentials}
+
+Statistics helps us understand and quantify uncertainty---essential when
+dealing with financial markets.
+
+\subsection{Measures of Central Tendency}
+
+\marginnote{%
+\textbf{Mean}\\[0.5em]
+$\bar{x} = \dfrac{1}{n}\displaystyle\sum_{i=1}^{n} x_i$
+}
+
+The \textbf{mean} (average) is the sum divided by the count:
+\[
+\bar{x} = \frac{1}{n}\sum_{i=1}^{n} x_i
+\]
+
+The \textbf{median} is the middle value when data is sorted. It's more robust
+to outliers than the mean.
+
+\subsection{Measures of Spread}
+
+\marginnote{%
+\textbf{Variance}\\[0.5em]
+$\sigma^2 = \dfrac{1}{n}\displaystyle\sum_{i=1}^{n} (x_i - \bar{x})^2$
+}
+
+\textbf{Variance} measures how spread out the data is:
+\[
+\sigma^2 = \frac{1}{n}\sum_{i=1}^{n} (x_i - \bar{x})^2
+\]
+
+\textbf{Standard deviation} is the square root of variance:
+\[
+\sigma = \sqrt{\sigma^2}
+\]
+
+Standard deviation has the same units as the original data, making it easier
+to interpret than variance.
+
+\begin{lstlisting}[language=Rust]
+/// Calculate mean of a slice
+pub fn mean(data: &[f64]) -> f64 {
+    if data.is_empty() { return 0.0; }
+    data.iter().sum::<f64>() / data.len() as f64
+}
+
+/// Calculate variance of a slice
+pub fn variance(data: &[f64]) -> f64 {
+    if data.is_empty() { return 0.0; }
+    let m = mean(data);
+    data.iter().map(|x| (x - m).powi(2)).sum::<f64>() / data.len() as f64
+}
+
+/// Calculate standard deviation
+pub fn std_dev(data: &[f64]) -> f64 {
+    variance(data).sqrt()
+}
+\end{lstlisting}
+
+\subsection{Probability Distributions}
+
+A \textbf{probability distribution} describes how likely different outcomes are.
+
+\subsubsection{Normal Distribution (Gaussian)}
+
+\marginnote{%
+\textbf{Normal PDF}\\[0.5em]
+$f(x) = \dfrac{1}{\sigma\sqrt{2\pi}} e^{-\frac{(x-\mu)^2}{2\sigma^2}}$
+}
+
+The normal distribution is the famous ``bell curve'':
+\[
+f(x) = \frac{1}{\sigma\sqrt{2\pi}} e^{-\frac{(x-\mu)^2}{2\sigma^2}}
+\]
+
+where $\mu$ is the mean and $\sigma$ is the standard deviation.
+
+We write $X \sim \Normal(\mu, \sigma^2)$ to say ``$X$ follows a normal
+distribution with mean $\mu$ and variance $\sigma^2$.''
+
+\begin{warning}
+Financial returns are NOT normally distributed! They have ``fat tails''---
+extreme events happen much more often than the normal distribution predicts.
+We explore this in Chapter~\ref{ch:moments}.
+\end{warning}
+
+\subsubsection{Uniform Distribution}
+
+Every outcome in a range is equally likely:
+\[
+f(x) = \frac{1}{b - a} \quad \text{for } a \leq x \leq b
+\]
+
+\subsection{Expected Value and Variance}
+
+\marginnote{%
+\textbf{Expected Value}\\[0.5em]
+$\E[X] = \displaystyle\sum_x x \cdot P(X = x)$\\[0.5em]
+(discrete)\\[1em]
+$\E[X] = \displaystyle\int_{-\infty}^{\infty} x \cdot f(x) \, dx$\\[0.5em]
+(continuous)
+}
+
+The \textbf{expected value} $\E[X]$ is the average outcome you'd expect over
+many trials:
+
+For a discrete random variable:
+\[
+\E[X] = \sum_x x \cdot P(X = x)
+\]
+
+Key properties:
+\begin{itemize}
+    \item $\E[aX + b] = a\E[X] + b$ (linearity)
+    \item $\E[X + Y] = \E[X] + \E[Y]$ (additivity)
+    \item $\Var(X) = \E[X^2] - (\E[X])^2$
+\end{itemize}
+
+\section{Financial Concepts}
+
+Before diving into quantitative methods, let's establish some fundamental
+financial concepts.
+
+\subsection{What is a Stock?}
+
+A \textbf{stock} (or share) represents partial ownership of a company. When
+you buy a stock, you own a small piece of that company and are entitled to
+a share of its profits.
+
+\marginnote{%
+\textbf{Stock Price}\\[0.3em]
+The price at which buyers and sellers agree to trade ownership.
+}
+
+The \textbf{stock price} is determined by supply and demand in the market.
+It reflects what buyers are willing to pay and sellers are willing to accept.
+
+\subsection{OHLCV Data}
+
+Market data is typically recorded as \textbf{OHLCV}:
+
+\begin{itemize}
+    \item \textbf{O}pen: First price of the trading period
+    \item \textbf{H}igh: Highest price during the period
+    \item \textbf{L}ow: Lowest price during the period
+    \item \textbf{C}lose: Last price of the period
+    \item \textbf{V}olume: Number of shares traded
+\end{itemize}
+
+This data captures the essential price action within any time frame (day,
+hour, minute).
+
+\subsection{Returns}
+
+\marginnote{%
+\textbf{Simple Return}\\[0.5em]
+$R_t = \dfrac{P_t - P_{t-1}}{P_{t-1}}$\\[1em]
+\textbf{Log Return}\\[0.5em]
+$r_t = \ln\left(\dfrac{P_t}{P_{t-1}}\right)$
+}
+
+A \textbf{return} measures how much an investment gained or lost:
+
+\textbf{Simple return}:
+\[
+R_t = \frac{P_t - P_{t-1}}{P_{t-1}}
+\]
+
+\textbf{Log return} (continuously compounded):
+\[
+r_t = \ln\left(\frac{P_t}{P_{t-1}}\right)
+\]
+
+Log returns have a useful property: they add up over time.
+\[
+r_{t_1 \to t_n} = r_{t_1} + r_{t_2} + \cdots + r_{t_n}
+\]
+
+\subsection{Risk and Volatility}
+
+\textbf{Risk} in finance is typically measured by \textbf{volatility}---the
+standard deviation of returns.
+
+\marginnote{%
+\textbf{Volatility}\\[0.5em]
+$\sigma = \text{std}(r_t)$\\[0.5em]
+Often annualized: $\sigma_{\text{annual}} = \sigma_{\text{daily}} \times \sqrt{252}$
+}
+
+Higher volatility means more uncertainty---prices swing more wildly.
+
+\textbf{Annualized volatility} scales daily volatility to a yearly figure:
+\[
+\sigma_{\text{annual}} = \sigma_{\text{daily}} \times \sqrt{252}
+\]
+
+(252 is the typical number of trading days per year.)
+
+\subsection{The Risk-Return Tradeoff}
+
+\begin{keyinsight}
+Higher expected returns generally require accepting higher risk. There is no
+free lunch in finance---if someone promises high returns with low risk, be
+skeptical.
+\end{keyinsight}
+
+The \textbf{Sharpe ratio} measures risk-adjusted return:
+\[
+\sharpe = \frac{\E[R] - R_f}{\sigma}
+\]
+
+where $R_f$ is the risk-free rate (e.g., Treasury bills).
+
+\section{Programming in Rust}
+
+This book uses Rust for all implementations. Here's a quick introduction for
+readers unfamiliar with the language.
+
+\subsection{Why Rust?}
+
+\begin{itemize}
+    \item \textbf{Performance}: As fast as C/C++, suitable for
+      high-frequency trading
+    \item \textbf{Safety}: The compiler catches bugs before runtime
+    \item \textbf{Modern}: Great tooling, package management, and community
+    \item \textbf{Learning}: Writing correct Rust forces you to think
+      carefully---great for learning
+\end{itemize}
+
+\subsection{Basic Syntax}
+
+\begin{lstlisting}[language=Rust]
+// Variables (immutable by default)
+let x = 5;
+let mut y = 10;  // mutable
+y = 20;
+
+// Functions
+fn add(a: i32, b: i32) -> i32 {
+    a + b  // no semicolon = return value
+}
+
+// Structs (like classes)
+struct Stock {
+    symbol: String,
+    price: f64,
+}
+
+// Implementation block
+impl Stock {
+    fn new(symbol: &str, price: f64) -> Self {
+        Stock {
+            symbol: symbol.to_string(),
+            price,
+        }
+    }
+
+    fn value(&self, shares: u32) -> f64 {
+        self.price * shares as f64
+    }
+}
+
+// Using the struct
+let aapl = Stock::new("AAPL", 150.0);
+let portfolio_value = aapl.value(100);
+\end{lstlisting}
+
+\subsection{Traits (Interfaces)}
+
+\marginnote{%
+\textbf{Traits}\\[0.3em]
+Rust's way of defining shared behavior. Similar to interfaces in Java or
+protocols in Swift.
+}
+
+Traits define shared behavior:
+
+\begin{lstlisting}[language=Rust]
+// Define a trait
+trait Analyzer {
+    fn analyze(&self, data: &[f64]) -> f64;
+}
+
+// Implement for a struct
+struct MeanAnalyzer;
+
+impl Analyzer for MeanAnalyzer {
+    fn analyze(&self, data: &[f64]) -> f64 {
+        data.iter().sum::<f64>() / data.len() as f64
+    }
+}
+
+// Use generically
+fn run_analysis<A: Analyzer>(analyzer: &A, data: &[f64]) -> f64 {
+    analyzer.analyze(data)
+}
+\end{lstlisting}
+
+This book uses traits extensively to create modular, reusable components.
+
+\subsection{Error Handling}
+
+\begin{lstlisting}[language=Rust]
+// Result type for operations that can fail
+fn divide(a: f64, b: f64) -> Result<f64, String> {
+    if b == 0.0 {
+        Err("Division by zero".to_string())
+    } else {
+        Ok(a / b)
+    }
+}
+
+// Using Result
+match divide(10.0, 2.0) {
+    Ok(result) => println!("Result: {}", result),
+    Err(e) => println!("Error: {}", e),
+}
+
+// Or use the ? operator
+fn calculate() -> Result<f64, String> {
+    let x = divide(10.0, 2.0)?;  // propagates error
+    Ok(x * 2.0)
+}
+\end{lstlisting}
+
+\subsection{Iterators}
+
+Rust's iterators are powerful and efficient:
+
+\begin{lstlisting}[language=Rust]
+let prices = vec![100.0, 102.0, 101.0, 105.0];
+
+// Map and collect
+let returns: Vec<f64> = prices.windows(2)
+    .map(|w| (w[1] - w[0]) / w[0])
+    .collect();
+
+// Filter
+let positive: Vec<f64> = returns.iter()
+    .filter(|&&r| r > 0.0)
+    .copied()
+    .collect();
+
+// Fold (reduce)
+let sum: f64 = prices.iter().sum();
+let product: f64 = prices.iter().product();
+\end{lstlisting}
+
+\section{Running the Examples}
+
+All code examples in this book are available in the companion repository.
+
+\subsection{Prerequisites}
+
+\begin{enumerate}
+    \item Install Rust: \url{https://rustup.rs/}
+    \item Clone the repository:
+\begin{lstlisting}[language=bash]
+git clone https://github.com/bitscrafts/quant-lab-rust.git
+cd quant-lab-rust
+\end{lstlisting}
+\end{enumerate}
+
+\subsection{Running Examples}
+
+Each chapter has a corresponding crate with examples:
+
+\begin{lstlisting}[language=bash]
+# Chapter 1: Credit Card Fraud
+cargo run -p qf-01-fraud --example fraud_analysis
+
+# Chapter 2: Loan Default
+cargo run -p qf-02-loan --example loan_analysis
+
+# Chapter 3: Stock Prices
+cargo run -p qf-03-stocks --example stock_analysis
+\end{lstlisting}
+
+\subsection{Running Tests}
+
+\begin{lstlisting}[language=bash]
+# Run all tests
+cargo test
+
+# Run tests for a specific crate
+cargo test -p qf-01-fraud
+\end{lstlisting}
+
+\section{Summary}
+
+This chapter covered:
+
+\begin{itemize}
+    \item \textbf{Mathematical notation}: Summation, products, functions,
+      logarithms
+    \item \textbf{Statistics}: Mean, variance, standard deviation,
+      distributions
+    \item \textbf{Financial concepts}: Stocks, OHLCV, returns, volatility,
+      Sharpe ratio
+    \item \textbf{Rust programming}: Variables, functions, structs, traits,
+      error handling
+\end{itemize}
+
+\vspace{1em}
+\noindent\textbf{Next chapter}: We apply these foundations to detect credit
+card fraud using anomaly detection.

@@ -1,0 +1,15 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/qf-common",
+    "crates/qf-01-fraud",
+    "crates/qf-02-loan",
+    "crates/qf-03-stocks",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+authors = ["Marcelo Correa <mvcorrea@gmail.com>"]
+license = "MIT"
+repository = "https://github.com/mvcorrea/quant-lab-rust"

@@ -1,0 +1,486 @@
+% Learning Quantitative Finance in Rust
+% Template: kaobook
+% Compilation: remote via Podman (latex-remote skill)
+
+\documentclass[
+	fontsize=10pt,
+	twoside=false,
+	secnumdepth=2,
+	open=any,
+]{kaobook}
+
+% Language configuration
+\usepackage[english]{babel}
+\usepackage[style=english]{csquotes}
+
+% Essential math packages
+\usepackage{amsmath, amssymb}
+\usepackage{mathtools}
+
+% TikZ graphics
+\usepackage{tikz}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{
+    arrows.meta,
+    positioning,
+    calc,
+    shapes.geometric,
+    patterns,
+    decorations.pathreplacing,
+    fit,
+    backgrounds,
+    matrix,
+    datavisualization
+}
+
+% Tables
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{pdflscape}
+\usepackage{multirow}
+\usepackage{array}
+
+% Fix \refeq conflict before loading kaorefs
+\let\refeq\relax
+
+% kaobook packages
+\usepackage{kaotheorems}
+\usepackage{kaorefs}
+\usepackage{kaobiblio}
+\addbibresource{references.bib}
+
+% Image paths
+\graphicspath{{images/}{figures/}{./}}
+
+% Index
+\makeindex[columns=3, title=Index, intoc]
+
+%----------------------------------------------------------------------------------------
+%	CHAPTER FORMAT
+%----------------------------------------------------------------------------------------
+
+\renewcommand*{\chapterformat}{\thechapter\enskip}
+\renewcommand*{\chaptermarkformat}{\thechapter\enskip}
+
+%----------------------------------------------------------------------------------------
+%	FINANCE AND STATISTICS COMMANDS
+%----------------------------------------------------------------------------------------
+
+% Probability and statistics
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\text{Var}}
+\newcommand{\Cov}{\text{Cov}}
+\newcommand{\Corr}{\text{Corr}}
+\newcommand{\Normal}{\mathcal{N}}
+\DeclareMathOperator*{\argmin}{argmin}
+\DeclareMathOperator*{\argmax}{argmax}
+
+% Returns
+\newcommand{\simplereturn}{\frac{P_t - P_{t-1}}{P_{t-1}}}
+\newcommand{\logreturn}{\ln\left(\frac{P_t}{P_{t-1}}\right)}
+
+% Moments
+\newcommand{\skew}{\text{Skew}}
+\newcommand{\kurt}{\text{Kurt}}
+\newcommand{\excesskurt}{\text{ExcessKurt}}
+
+% Time series
+\newcommand{\acf}{\text{ACF}}
+\newcommand{\pacf}{\text{PACF}}
+\newcommand{\adf}{\text{ADF}}
+
+% Finance metrics
+\newcommand{\sharpe}{\text{Sharpe}}
+\newcommand{\maxdd}{\text{MaxDD}}
+\newcommand{\vol}{\sigma}
+
+% Crate and code references
+\newcommand{\crate}[1]{\texttt{#1}}
+\newcommand{\module}[1]{\texttt{#1}}
+\newcommand{\func}[1]{\texttt{#1()}}
+
+%----------------------------------------------------------------------------------------
+%	COLORED BOXES
+%----------------------------------------------------------------------------------------
+
+\usepackage{tcolorbox}
+\tcbuselibrary{skins,breakable}
+
+% Rust code listings
+\usepackage{listings}
+\usepackage{xcolor}
+
+\definecolor{rustbg}{RGB}{250,250,250}
+\definecolor{rustcomment}{RGB}{128,128,128}
+\definecolor{rustkeyword}{RGB}{0,0,200}
+\definecolor{ruststring}{RGB}{0,128,0}
+
+\lstdefinelanguage{Rust}{
+    keywords={fn, let, mut, pub, struct, enum, impl, trait, for, while, loop,
+              if, else, match, return, use, mod, crate, self, Self, where,
+              async, await, move, ref, const, static, type, dyn, Box, Vec,
+              Option, Result, Ok, Err, Some, None, true, false},
+    keywordstyle=\color{rustkeyword}\bfseries,
+    sensitive=true,
+    comment=[l]{//},
+    morecomment=[s]{/*}{*/},
+    commentstyle=\color{rustcomment}\itshape,
+    stringstyle=\color{ruststring},
+    morestring=[b]",
+    morestring=[b]',
+    backgroundcolor=\color{rustbg},
+    basicstyle=\ttfamily\scriptsize,
+    breaklines=true,
+    showstringspaces=false,
+    tabsize=4,
+    frame=single,
+    framerule=0.5pt,
+    rulecolor=\color{gray!50},
+}
+
+\lstset{language=Rust}
+
+% Companion code box
+\newtcolorbox{companioncode}[1][]{
+    enhanced,
+    breakable,
+    colback=blue!5!white,
+    colframe=blue!60!black,
+    fonttitle=\bfseries,
+    fontupper=\small,
+    coltitle=white,
+    title={Companion Code: \crate{#1}},
+    left=5pt, right=5pt, top=5pt, bottom=5pt
+}
+
+% Key insight box
+\newtcolorbox{keyinsight}[1][]{
+    enhanced,
+    breakable,
+    colback=yellow!10!white,
+    colframe=yellow!60!black,
+    fonttitle=\bfseries,
+    title={Key Insight},
+    left=5pt, right=5pt, top=5pt, bottom=5pt,
+    #1
+}
+
+% Warning box
+\newtcolorbox{warning}[1][]{
+    enhanced,
+    breakable,
+    colback=red!5!white,
+    colframe=red!70!black,
+    fonttitle=\bfseries,
+    title={Warning},
+    left=5pt, right=5pt, top=5pt, bottom=5pt,
+    #1
+}
+
+% Formula margin note
+\newcommand{\formulamargem}[2]{%
+    \marginnote{%
+        \small\textbf{#1}\\[0.5em]
+        #2
+    }%
+}
+
+% Intuition margin note
+\newcommand{\intuicaomargem}[2]{%
+    \marginnote{%
+        \small\textbf{Intuition:}\\[0.2em]
+        {\footnotesize #2}%
+    }%
+}
+
+%----------------------------------------------------------------------------------------
+%	BEGIN DOCUMENT
+%----------------------------------------------------------------------------------------
+
+\begin{document}
+
+%----------------------------------------------------------------------------------------
+%	BOOK INFORMATION
+%----------------------------------------------------------------------------------------
+
+\titlehead{quant-finance --- on-research}
+
+\title[Learning Quant Finance in Rust]{%
+    Learning Quantitative Finance in Rust\\[0.5em]
+    \Large A Progressive Journey from Kaggle to Quant Research
+}
+\author[Marcelo Correa]{Marcelo Correa}
+\date{\today}
+\publishers{bitscrafts/quant-lab-rust}
+
+%----------------------------------------------------------------------------------------
+
+\frontmatter
+
+%----------------------------------------------------------------------------------------
+%	COPYRIGHT PAGE
+%----------------------------------------------------------------------------------------
+
+\makeatletter
+\uppertitleback{\@titlehead}
+
+\lowertitleback{
+	\textbf{About this book} \\
+	This book documents the learning journey through quantitative finance,
+    implemented from first principles in Rust. Each chapter corresponds to a
+    crate in the repository and a phase in the curriculum.
+
+	\medskip
+
+	\textbf{Companion code} \\
+    All code lives in the \crate{quant-lab-rust} repository at:\\
+    \url{https://github.com/bitscrafts/quant-lab-rust}
+
+	\medskip
+
+	\textbf{Colophon} \\
+	Compiled with \href{https://www.latex-project.org/}{\LaTeX} using the
+    \href{https://github.com/fmarotta/kaobook/}{kaobook} class. Diagrams
+    created with TikZ/PGFPlots.
+
+	\medskip
+
+	\textbf{Compilation} \\
+	Compiled remotely via Podman on \today.
+}
+\makeatother
+
+%----------------------------------------------------------------------------------------
+%	DEDICATION
+%----------------------------------------------------------------------------------------
+
+\dedication{
+	The market can stay irrational \\
+    longer than you can stay solvent.\\
+	\flushright -- John Maynard Keynes
+}
+
+%----------------------------------------------------------------------------------------
+%	TITLE AND TOC
+%----------------------------------------------------------------------------------------
+
+\maketitle
+
+%----------------------------------------------------------------------------------------
+%	PREFACE
+%----------------------------------------------------------------------------------------
+
+\chapter*{Preface}
+
+This book documents a learning journey: from data science fundamentals to
+quantitative finance, implemented entirely in Rust. The goal is not just to
+understand the concepts, but to internalize them through implementation.
+
+\paragraph{Philosophy}
+We start with beginner-friendly Kaggle projects and progressively build toward
+advanced quant research tools. No black-box libraries --- the math is
+hand-rolled, because the implementation IS the learning.
+
+\paragraph{Structure}
+The book is organized in five parts:
+\begin{itemize}
+    \item \textbf{Part I --- Foundations}: First Kaggle projects, basic stats
+    \item \textbf{Part II --- Core Concepts}: Returns, volatility, backtesting
+    \item \textbf{Part III --- Quantitative Methods}: Moments, time series, stationarity
+    \item \textbf{Part IV --- Derivatives and Portfolio}: Options, Markowitz, factors
+    \item \textbf{Part V --- Advanced Topics}: Microstructure, AFML techniques
+\end{itemize}
+
+\paragraph{How to use}
+Each chapter has:
+\begin{itemize}
+    \item Learning objectives at the start
+    \item Mathematical foundations with TikZ diagrams
+    \item Rust implementation with code listings
+    \item Margin notes with key formulas and insights
+    \item Exercises and references
+\end{itemize}
+
+The companion code lives at \url{https://github.com/bitscrafts/quant-lab-rust}.
+Clone and run examples with:
+\begin{lstlisting}[language=bash]
+git clone https://github.com/bitscrafts/quant-lab-rust.git
+cd quant-lab-rust
+cargo run -p qf-01-fraud --example fraud_analysis
+\end{lstlisting}
+
+%----------------------------------------------------------------------------------------
+%	TABLE OF CONTENTS
+%----------------------------------------------------------------------------------------
+
+\begingroup
+
+\setlength{\textheight}{230\vscale}
+\etocstandarddisplaystyle
+\etocstandardlines
+
+\tableofcontents
+
+\listoffigures
+
+\let\cleardoublepage\bigskip
+\let\clearpage\bigskip
+
+\listoftables
+
+\endgroup
+
+%----------------------------------------------------------------------------------------
+%	MAIN CONTENT
+%----------------------------------------------------------------------------------------
+
+\mainmatter
+\setchapterstyle{kao}
+
+%----------------------------------------------------------------------------------------
+% PART I: FOUNDATIONS (Beginner)
+%----------------------------------------------------------------------------------------
+
+\pagelayout{wide}
+\addpart{Foundations}
+\pagelayout{margin}
+
+\input{chapters/ch00}
+
+\input{chapters/ch01}
+
+\input{chapters/ch02}
+
+\input{chapters/ch03}
+
+%----------------------------------------------------------------------------------------
+% PART II: CORE CONCEPTS (Intermediate)
+%----------------------------------------------------------------------------------------
+
+\pagelayout{wide}
+\addpart{Core Concepts}
+\pagelayout{margin}
+
+\chapter{Returns and Volatility}
+\label{ch:returns}
+% \input{chapters/ch04}
+\textit{Chapter content pending --- Phase 4 implementation.}
+
+\chapter{Your First Backtest}
+\label{ch:backtest-intro}
+% \input{chapters/ch05}
+\textit{Chapter content pending --- Phase 5 implementation.}
+
+%----------------------------------------------------------------------------------------
+% PART III: QUANTITATIVE METHODS (Advanced)
+%----------------------------------------------------------------------------------------
+
+\pagelayout{wide}
+\addpart{Quantitative Methods}
+\pagelayout{margin}
+
+\chapter{Foundations: Moments and Fat Tails}
+\label{ch:moments}
+% \input{chapters/ch06}
+\textit{Chapter content pending --- Phase 6 implementation.}
+
+\chapter{Time Series: Stationarity and Fractional Differentiation}
+\label{ch:timeseries}
+% \input{chapters/ch07}
+\textit{Chapter content pending --- Phase 7 implementation.}
+
+\chapter{Volatility Models: EWMA, ARCH, GARCH}
+\label{ch:volatility}
+% \input{chapters/ch08}
+\textit{Chapter content pending --- Phase 8 implementation.}
+
+\chapter{Stochastic Processes and Monte Carlo}
+\label{ch:stochastic}
+% \input{chapters/ch09}
+\textit{Chapter content pending --- Phase 9 implementation.}
+
+%----------------------------------------------------------------------------------------
+% PART IV: DERIVATIVES AND PORTFOLIO (Expert)
+%----------------------------------------------------------------------------------------
+
+\pagelayout{wide}
+\addpart{Derivatives and Portfolio Theory}
+\pagelayout{margin}
+
+\chapter{Options Pricing: Black-Scholes and Beyond}
+\label{ch:options}
+% \input{chapters/ch10}
+\textit{Chapter content pending --- Phase 10 implementation.}
+
+\chapter{Portfolio Optimization: Markowitz and Beyond}
+\label{ch:portfolio}
+% \input{chapters/ch11}
+\textit{Chapter content pending --- Phase 11 implementation.}
+
+\chapter{Factor Models and PCA}
+\label{ch:factors}
+% \input{chapters/ch12}
+\textit{Chapter content pending --- Phase 12 implementation.}
+
+%----------------------------------------------------------------------------------------
+% PART V: ADVANCED TOPICS (Expert)
+%----------------------------------------------------------------------------------------
+
+\pagelayout{wide}
+\addpart{Advanced Topics}
+\pagelayout{margin}
+
+\chapter{Market Microstructure}
+\label{ch:microstructure}
+% \input{chapters/ch13}
+\textit{Chapter content pending --- Phase 13 implementation.}
+
+\chapter{AFML: From Research to Production}
+\label{ch:afml}
+% \input{chapters/ch14}
+\textit{Chapter content pending --- Phase 14 implementation.}
+
+%----------------------------------------------------------------------------------------
+%	APPENDICES
+%----------------------------------------------------------------------------------------
+
+\appendix
+
+\pagelayout{wide}
+\addpart{Appendices}
+\pagelayout{margin}
+
+\chapter{Mathematical Notation}
+\label{app:notation}
+\textit{Appendix content pending.}
+
+\chapter{Rust Patterns for Finance}
+\label{app:rust}
+\textit{Appendix content pending.}
+
+\chapter{Dataset Sources}
+\label{app:datasets}
+\textit{Appendix content pending.}
+
+%----------------------------------------------------------------------------------------
+%	BACK MATTER
+%----------------------------------------------------------------------------------------
+
+\backmatter
+\setchapterstyle{plain}
+
+%----------------------------------------------------------------------------------------
+%	BIBLIOGRAPHY
+%----------------------------------------------------------------------------------------
+
+\defbibnote{bibnote}{References used in this book.\par\bigskip}
+\printbibliography[heading=bibintoc, title=Bibliography, prenote=bibnote]
+
+%----------------------------------------------------------------------------------------
+%	INDEX
+%----------------------------------------------------------------------------------------
+
+\printindex
+
+\end{document}

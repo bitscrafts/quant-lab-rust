@@ -1,0 +1,12 @@
+[package]
+name = "qf-01-fraud"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+qf-common = { path = "../qf-common" }
+
+[dev-dependencies]
+approx = "0.5"
