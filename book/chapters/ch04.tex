@@ -1,0 +1,411 @@
+\chapter{Returns and Volatility}
+\label{ch:returns}
+
+\begin{companioncode}{qf-04-returns}
+Code: \texttt{crates/qf-04-returns/}\\
+Dependencies: \crate{qf-common}, \crate{qf-03-stocks}\\
+Run: \texttt{cargo run -p qf-04-returns --example returns\_analysis}
+\end{companioncode}
+
+\section{Learning Objectives}
+
+This chapter introduces the foundational vocabulary of quantitative finance.
+After completing it you can:
+
+\begin{itemize}
+    \item Compute simple and logarithmic returns and know when to use each
+    \item Measure volatility and annualise it for cross-frequency comparison
+    \item Evaluate risk-adjusted performance with the Sharpe and Sortino ratios
+    \item Quantify drawdowns and recovery time from a price series
+    \item Use the \texttt{Returns} trait to abstract return computation across
+      data sources
+\end{itemize}
+
+\begin{keyinsight}
+Returns, not prices, are the currency of quant research. Prices are
+non-stationary; returns are (approximately) stationary. Every quant model in
+this book starts by transforming prices into returns.
+\end{keyinsight}
+
+\section{Simple vs Log Returns}
+
+\subsection{Definitions}
+
+\marginnote{%
+\textbf{Simple return}\\[0.3em]
+$r_t = \dfrac{P_t - P_{t-1}}{P_{t-1}}$\\[0.5em]
+\textbf{Log return}\\[0.3em]
+$r_t = \ln\!\left(\dfrac{P_t}{P_{t-1}}\right)$
+}
+
+The simple (arithmetic) return is the percentage change in price:
+\[
+r_t = \frac{P_t - P_{t-1}}{P_{t-1}}
+\]
+The log (continuously compounded) return is the natural log of the price ratio:
+\[
+r_t = \ln\!\left(\frac{P_t}{P_{t-1}}\right) = \ln(P_t) - \ln(P_{t-1})
+\]
+
+The two are related exactly by
+\[
+r^{\text{log}}_t = \ln\!\left(1 + r^{\text{simple}}_t\right),
+\]
+and for small returns ($|r| \ll 1$) they are nearly equal.
+
+\subsection{When to use which}
+
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Property} & \textbf{Simple} & \textbf{Log} \\
+\midrule
+Interpretation & ``I made 10\%'' & Less intuitive \\
+Additivity over time & No & Yes \\
+Additivity over assets & Yes & No \\
+Symmetry & Symmetric & Unbounded below \\
+Compounding & Multiplicative & Additive \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{keyinsight}
+Log returns are additive across time: the $k$-period log return is the sum of
+the $k$ single-period log returns. This makes them natural for time-series
+modelling. Simple returns are additive across assets in a portfolio (weighted
+by portfolio weights), which makes them natural for portfolio returns.
+\end{keyinsight}
+
+\subsection{Rust implementation}
+
+\begin{lstlisting}[language=Rust]
+/// Simple return: (P_t - P_{t-1}) / P_{t-1}
+pub fn simple_returns(prices: &[f64]) -> Vec<f64> {
+    if prices.len() < 2 { return Vec::new(); }
+    let mut out = Vec::with_capacity(prices.len() - 1);
+    for i in 1..prices.len() {
+        let prev = prices[i - 1];
+        out.push(if prev == 0.0 { 0.0 }
+                 else { (prices[i] - prev) / prev });
+    }
+    out
+}
+
+/// Log return: ln(P_t / P_{t-1})
+pub fn log_returns(prices: &[f64]) -> Vec<f64> {
+    if prices.len() < 2 { return Vec::new(); }
+    let mut out = Vec::with_capacity(prices.len() - 1);
+    for i in 1..prices.len() {
+        let (prev, curr) = (prices[i - 1], prices[i]);
+        out.push(if prev > 0.0 && curr > 0.0 { (curr / prev).ln() }
+                 else { 0.0 });
+    }
+    out
+}
+\end{lstlisting}
+
+\marginnote{%
+\textbf{Cumulative return}\\[0.3em]
+$R_{0\to t} = \prod_{k=1}^{t}(1+r_k) - 1$
+}
+
+The cumulative return over a period is the running compounding of
+single-period simple returns:
+\[
+R_{0 \to t} = \prod_{k=1}^{t}(1 + r_k) - 1.
+\]
+
+\begin{lstlisting}[language=Rust]
+pub fn cumulative_returns(returns: &[f64]) -> Vec<f64> {
+    let mut out = Vec::with_capacity(returns.len());
+    let mut wealth = 1.0_f64;
+    for &r in returns {
+        wealth *= 1.0 + r;
+        out.push(wealth - 1.0);
+    }
+    out
+}
+\end{lstlisting}
+
+\section{Volatility}
+
+\marginnote{%
+\textbf{Sample std dev}\\[0.3em]
+$\sigma = \sqrt{\dfrac{1}{n-1}\sum_{t=1}^{n}(r_t - \bar r)^2}$
+}
+
+Volatility is the standard deviation of returns. We use the \emph{sample}
+estimator (denominator $n-1$), consistent with \func{qf\_common::compute\_stats}:
+\[
+\sigma = \sqrt{\frac{1}{n-1}\sum_{t=1}^{n}(r_t - \bar r)^2}.
+\]
+
+\subsection{Annualisation}
+
+\marginnote{%
+\textbf{Annualised vol}\\[0.3em]
+$\sigma_{\text{ann}} = \sigma_{\text{period}} \cdot \sqrt{m}$\\[0.3em]
+where $m$ is the number of periods per year (252 for daily).
+}
+
+To compare volatilities across frequencies (daily, weekly, monthly), we
+annualise. Under the assumption that returns are i.i.d., variance scales
+linearly with the horizon, so standard deviation scales with the square root:
+\[
+\sigma_{\text{annual}} = \sigma_{\text{period}} \cdot \sqrt{m}.
+\]
+
+\begin{lstlisting}[language=Rust]
+pub fn volatility(returns: &[f64]) -> f64 {
+    let n = returns.len();
+    if n < 2 { return 0.0; }
+    let mean: f64 = returns.iter().sum::<f64>() / n as f64;
+    let ssd: f64 = returns.iter()
+        .map(|&r| { let d = r - mean; d * d })
+        .sum();
+    (ssd / (n - 1) as f64).sqrt()
+}
+
+pub fn annualized_volatility(returns: &[f64], periods_per_year: f64) -> f64 {
+    if periods_per_year <= 0.0 { return 0.0; }
+    volatility(returns) * periods_per_year.sqrt()
+}
+\end{lstlisting}
+
+\begin{warning}
+The $\sqrt{m}$ rule assumes returns are independent and identically
+distributed. For assets with autocorrelated or volatility-clustered returns
+(see Chapter~\ref{ch:volatility}), annualisation by $\sqrt{m}$ overstates the
+true annual volatility.
+\end{warning}
+
+\subsection{Rolling volatility}
+
+A rolling window reveals how volatility changes over time---useful for
+regime detection and risk monitoring:
+
+\begin{lstlisting}[language=Rust]
+pub fn rolling_volatility(returns: &[f64], window: usize) -> Vec<f64> {
+    if window == 0 || window > returns.len() { return Vec::new(); }
+    let mut out = Vec::with_capacity(returns.len() - window + 1);
+    for i in window - 1..returns.len() {
+        let slice = &returns[i + 1 - window..=i];
+        out.push(volatility(slice));
+    }
+    out
+}
+\end{lstlisting}
+
+\section{Risk-Adjusted Performance}
+
+\subsection{Sharpe ratio}
+
+\marginnote{%
+\textbf{Sharpe ratio}\\[0.3em]
+$S = \dfrac{\E[r] - r_f}{\sigma(r)}$
+}
+
+The Sharpe ratio measures excess return per unit of total risk:
+\[
+S = \frac{\bar r - r_f}{\sigma(r)}.
+\]
+To annualise, multiply by $\sqrt{m}$ (because both the mean excess return and
+the standard deviation scale together under i.i.d.):
+\[
+S_{\text{annual}} = S_{\text{period}} \cdot \sqrt{m}.
+\]
+
+\begin{lstlisting}[language=Rust]
+pub fn sharpe_ratio(returns: &[f64], risk_free_rate: f64) -> f64 {
+    let n = returns.len();
+    if n < 2 { return 0.0; }
+    let vol = volatility(returns);
+    if vol == 0.0 { return 0.0; }
+    let mean: f64 = returns.iter().sum::<f64>() / n as f64;
+    (mean - risk_free_rate) / vol
+}
+
+pub fn annualized_sharpe(returns: &[f64], rf: f64, periods_per_year: f64) -> f64 {
+    if periods_per_year <= 0.0 { return 0.0; }
+    sharpe_ratio(returns, rf) * periods_per_year.sqrt()
+}
+\end{lstlisting}
+
+\subsection{Sortino ratio}
+
+\marginnote{%
+\textbf{Downside deviation}\\[0.3em]
+$\sigma_D = \sqrt{\dfrac{1}{n}\sum_{r_t < r_f}(r_f - r_t)^2}$
+}
+
+The Sortino ratio replaces total volatility with \emph{downside} volatility
+only. Upside volatility is good---it should not penalise the ratio:
+\[
+\text{Sortino} = \frac{\bar r - r_f}{\sigma_D}, \qquad
+\sigma_D = \sqrt{\frac{1}{n}\sum_{r_t < r_f}(r_f - r_t)^2}.
+\]
+
+\begin{lstlisting}[language=Rust]
+pub fn sortino_ratio(returns: &[f64], risk_free_rate: f64) -> f64 {
+    let n = returns.len();
+    if n < 2 { return 0.0; }
+    let downside_sq: f64 = returns.iter()
+        .map(|&r| {
+            let short = risk_free_rate - r;
+            if short > 0.0 { short * short } else { 0.0 }
+        })
+        .sum();
+    if downside_sq == 0.0 { return 0.0; }
+    let downside_dev = (downside_sq / n as f64).sqrt();
+    let mean: f64 = returns.iter().sum::<f64>() / n as f64;
+    (mean - risk_free_rate) / downside_dev
+}
+\end{lstlisting}
+
+\begin{keyinsight}
+Sortino $>$ Sharpe whenever the return distribution is right-skewed (more
+upside than downside). For symmetric distributions the two ratios are equal in
+expectation. Sortino is preferred for evaluating hedge-fund-style strategies
+where upside volatility is desirable.
+\end{keyinsight}
+
+\section{Drawdown}
+
+A drawdown is the percentage decline from a running peak:
+\[
+D_t = \frac{P_t - \max_{k \le t} P_k}{\max_{k \le t} P_k} \le 0.
+\]
+
+\marginnote{%
+\textbf{Max drawdown}\\[0.3em]
+$\text{MaxDD} = \min_t D_t$\\[0.3em]
+The worst peak-to-trough decline over the period.
+}
+
+\begin{lstlisting}[language=Rust]
+pub fn drawdown(prices: &[f64]) -> Vec<f64> {
+    let mut out = Vec::with_capacity(prices.len());
+    let mut running_max = f64::NEG_INFINITY;
+    for &p in prices {
+        if p > running_max { running_max = p; }
+        out.push(if running_max == 0.0 { 0.0 }
+                 else { (p - running_max) / running_max });
+    }
+    out
+}
+
+pub fn max_drawdown(prices: &[f64]) -> f64 {
+    drawdown(prices).iter().copied().fold(0.0, f64::min)
+}
+\end{lstlisting}
+
+The \texttt{DrawdownStats} struct summarises the worst episode:
+\begin{itemize}
+    \item \texttt{max\_drawdown}: the most negative drawdown value
+    \item \texttt{max\_drawdown\_duration}: longest run of consecutive
+      negative-drawdown observations
+    \item \texttt{recovery\_time}: steps from the trough back to a new high
+      (\texttt{None} if the series never recovered)
+\end{itemize}
+
+\begin{keyinsight}
+Max drawdown measures \emph{path risk}, not just terminal risk. A strategy
+that returns 10\% with a 50\% drawdown along the way is very different from one
+that returns 10\% smoothly. Most investors abandon strategies with deep
+drawdowns long before recovery---a risk that terminal-return statistics
+completely miss.
+\end{keyinsight}
+
+\section{The Returns Trait}
+
+\marginnote{%
+\textbf{Trait benefits}\\[0.3em]
+Define the capability (\emph{``can produce returns''}) once; implement for
+slices, owned vectors, and OHLCV data.
+}
+
+Following the workspace-wide trait-first architecture rule, we abstract return
+computation over price sources:
+
+\begin{lstlisting}[language=Rust]
+pub trait Returns {
+    fn simple_returns(&self) -> Vec<f64>;
+    fn log_returns(&self) -> Vec<f64>;
+}
+
+impl Returns for &[f64] { /* delegate to free functions */ }
+impl Returns for Vec<f64> { /* delegate to the slice impl */ }
+impl Returns for Vec<Ohlcv> {
+    fn simple_returns(&self) -> Vec<f64> {
+        let closes: Vec<f64> = self.iter().map(|o| o.close).collect();
+        simple_returns(&closes)
+    }
+    // log_returns similarly uses closing prices
+}
+\end{lstlisting}
+
+This lets generic code consume returns from any source that implements
+\texttt{Returns}, keeping analytics decoupled from data loading.
+
+\section{Example Output}
+
+\begin{lstlisting}[language=bash]
+$ cargo run -p qf-04-returns --example returns_analysis
+Returns Analysis
+================
+
+Simple Returns: mean=0.0031, std=0.0215
+Log Returns: mean=0.0029, std=0.0214
+Volatility (daily): 0.0215
+Volatility (annualized): 0.3417
+Sharpe Ratio (annualized): 2.29
+Sortino Ratio: 0.22
+Max Drawdown: -7.50%
+Drawdown duration: 6 steps, recovery: Some(6)
+
+Trait check (Vec<f64>): first simple return = 0.0030
+\end{lstlisting}
+
+\section{Exercises}
+
+\begin{enumerate}
+    \item \textbf{Return conversion}: Write a function that converts a series
+      of simple returns to log returns and vice versa. Verify the identity
+      $r^{\text{log}} = \ln(1 + r^{\text{simple}})$ with a property test.
+
+    \item \textbf{Annualisation sanity check}: For daily, weekly, and monthly
+      returns of the same asset, verify that the annualised volatilities are
+      approximately equal (they differ only by sampling noise).
+
+    \item \textbf{Calmar ratio}: Implement the Calmar ratio: annualised return
+      divided by the absolute value of the maximum drawdown. Compare it with
+      the Sharpe ratio on a synthetic strategy.
+
+    \item \textbf{Rolling Sharpe}: Implement a rolling Sharpe ratio (windowed
+      mean and windowed std) and visualise how it changes over time. Where
+      does it dip? Why?
+
+    \item \textbf{Drawdown with recovery}: Extend \texttt{drawdown\_stats} to
+      report the average drawdown (mean of negative drawdown values) and the
+      proportion of time spent in drawdown.
+\end{enumerate}
+
+\section{Key Takeaways}
+
+\begin{itemize}
+    \item \textbf{Log returns} are time-additive; \textbf{simple returns} are
+      portfolio-additive. Choose accordingly.
+    \item \textbf{Volatility} uses sample std ($n-1$); annualise by multiplying
+      by $\sqrt{m}$, valid under i.i.d.
+    \item \textbf{Sharpe} penalises all volatility; \textbf{Sortino} penalises
+      only downside.
+    \item \textbf{Max drawdown} measures path risk---the deepest hole on the
+      equity curve.
+    \item \textbf{The \texttt{Returns} trait} keeps analytics decoupled from
+      data sources, following the workspace trait-first rule.
+\end{itemize}
+
+\vspace{1em}
+\noindent\textbf{Next chapter}: Your first backtest---an SMA crossover
+strategy with P\&L accounting, transaction costs, and drawdown-based risk
+evaluation.

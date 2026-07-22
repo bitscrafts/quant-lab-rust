@@ -5,6 +5,7 @@ members = [
     "crates/qf-01-fraud",
     "crates/qf-02-loan",
     "crates/qf-03-stocks",
+    "crates/qf-04-returns",
 ]
 
 [workspace.package]

@@ -314,7 +314,7 @@ Create `book/chapters/ch04.tex` with:
 | `test_log_returns_basic` | `[100.0, 110.0]` | `[ln(1.1)]` ±1e-9 |
 | `test_log_returns_matches_formula` | `[100.0, 105.0, 110.0]` | each = ln(P_t/P_{t-1}) |
 | `test_log_simple_relationship` | `[100, 101, 102, 103]` | `log ≈ ln(1 + simple)` ±1e-9 |
-| `test_cumulative_returns` | simple `[0.10, -0.05, 0.08]` | ending ≈0.1314 |
+| `test_cumulative_returns` | simple `[0.10, -0.05, 0.08]` | ending ≈0.1286 |
 | `test_volatility_basic` | `[0.01, -0.02, 0.015, -0.01, 0.02]` | std_dev ≈ 0.0158 |
 | `test_volatility_constant` | `[0.01, 0.01, 0.01]` | 0.0 |
 | `test_volatility_empty` | `[]` | 0.0 |

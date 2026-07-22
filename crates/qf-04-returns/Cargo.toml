@@ -1,0 +1,15 @@
+[package]
+name = "qf-04-returns"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+qf-common = { path = "../qf-common" }
+qf-03-stocks = { path = "../qf-03-stocks" }
+thiserror = "1.0"
+
+[dev-dependencies]
+approx = "0.5"

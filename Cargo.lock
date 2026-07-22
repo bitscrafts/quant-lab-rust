@@ -99,6 +99,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "qf-04-returns"
+version = "0.1.0"
+dependencies = [
+ "approx",
+ "qf-03-stocks",
+ "qf-common",
+ "thiserror",
+]
+
+[[package]]
 name = "qf-common"
 version = "0.1.0"
 dependencies = [
