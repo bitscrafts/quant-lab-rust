@@ -1,0 +1,13 @@
+[package]
+name = "quant-core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+thiserror = "1.0"
+
+[dev-dependencies]
+approx = "0.5"

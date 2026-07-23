@@ -31,3 +31,4 @@ Cargo.lock
 
 # Keep PDF in build/
 !book/build/*.pdf
+HANDOFF.md

@@ -6,6 +6,10 @@ members = [
     "crates/qf-02-loan",
     "crates/qf-03-stocks",
     "crates/qf-04-returns",
+    "crates/qf-05-backtest",
+    "crates/quant-core",
+    "crates/quant-timeseries",
+    "crates/quant-vol",
 ]
 
 [workspace.package]

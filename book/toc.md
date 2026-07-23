@@ -94,15 +94,15 @@ are bundled in the book directory:
 
 | Ch | Title | Spec | Crate | LaTeX | Status |
 |----|-------|------|-------|-------|--------|
-| 04 | Returns and Volatility | [Phase 4](../spec.md#phase-4-returns--volatility) | `qf-04-returns` | `chapters/ch04.tex` | planned |
-| 05 | Your First Backtest | [Phase 5](../spec.md#phase-5-first-backtest) | `qf-05-backtest` | `chapters/ch05.tex` | planned |
+| 04 | Returns and Volatility | [Phase 4](../spec.md#phase-4-returns--volatility) | `qf-04-returns` | `chapters/ch04.tex` | **done** |
+| 05 | Your First Backtest | [Phase 5](../spec.md#phase-5-first-backtest) | `qf-05-backtest` | `chapters/ch05.tex` | **done** |
 
 ## Part III: Quantitative Methods
 
 | Ch | Title | Spec | Crate | LaTeX | Status |
 |----|-------|------|-------|-------|--------|
-| 06 | Foundations: Moments and Fat Tails | [Phase 6](../spec.md#phase-6-foundations--moments-and-fat-tails) | `quant-core` | `chapters/ch06.tex` | planned |
-| 07 | Time Series: Stationarity | [Phase 7](../spec.md#phase-7-time-series--stationarity-and-fractional-differentiation) | `quant-timeseries` | `chapters/ch07.tex` | planned |
+| 06 | Foundations: Moments and Fat Tails | [Phase 6](../spec.md#phase-6-foundations--moments-and-fat-tails) | `quant-core` | `chapters/ch06.tex` | **done** |
+| 07 | Time Series: Stationarity | [Phase 7](../spec.md#phase-7-time-series--stationarity-and-fractional-differentiation) | `quant-timeseries` | `chapters/ch07.tex` | **done** |
 | 08 | Volatility Models | Phase 8 | `quant-vol` | `chapters/ch08.tex` | planned |
 | 09 | Stochastic Processes | Phase 9 | `quant-stochastic` | `chapters/ch09.tex` | planned |
 

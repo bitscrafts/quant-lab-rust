@@ -1,0 +1,368 @@
+\section{Learning Objectives}
+
+This chapter begins the advanced track. From here on, all math is hand-rolled —
+no \texttt{rand}, \texttt{nalgebra}, or \texttt{statrs}. After completing it
+you can:
+
+\begin{itemize}
+    \item Build a validated price series that rejects non-finite and
+      non-positive values at construction time
+    \item Compute the first four sample moments (mean, variance, skewness,
+      excess kurtosis) from first principles
+    \item Apply any aggregation over a sliding window with a generic
+      \texttt{rolling} function
+    \item Implement a deterministic PRNG (xorshift64\*) and a normal sampler
+      (Box-Muller) without external crates
+    \item Simulate geometric Brownian motion paths and understand the exact
+      solution to the GBM SDE
+    \item Detect fat tails via excess kurtosis and explain why Gaussian risk
+      models underestimate tail risk
+\end{itemize}
+
+\begin{keyinsight}
+The Gaussian distribution has excess kurtosis $0$. Real financial returns
+have positive excess kurtosis: large losses and gains happen more often than
+a normal model predicts. Any risk model that assumes Gaussian returns will
+underestimate the probability of extreme events. The 2008 crisis was in
+part a fat-tail crisis.
+\end{keyinsight}
+
+\section{A Validated Price Series}
+
+\marginnote{%
+\textbf{The invariant}\\[0.3em]
+Every element of a \texttt{PriceSeries} is strictly positive and finite. The
+constructor rejects the rest.
+}
+
+The foundation of every quant computation is a clean price series. We wrap
+\texttt{Vec<f64>} in a newtype that enforces the invariant ``strictly positive
+and finite'' at construction time:
+
+\begin{lstlisting}[language=Rust]
+#[derive(Debug, Clone, PartialEq)]
+pub struct PriceSeries(Vec<f64>);
+
+impl PriceSeries {
+    pub fn new(prices: Vec<f64>) -> Result<Self, CoreError> {
+        for &p in &prices {
+            if !p.is_finite() || p <= 0.0 {
+                return Err(CoreError::InvalidPrice);
+            }
+        }
+        Ok(Self(prices))
+    }
+    pub fn as_slice(&self) -> &[f64] { &self.0 }
+    pub fn len(&self) -> usize { self.0.len() }
+}
+\end{lstlisting}
+
+Rejecting \texttt{NaN} and \texttt{+inf} at the boundary means every downstream
+function can assume finite inputs and skip defensive checks. This is the
+``parse, don't validate'' pattern applied to numeric data.
+
+\section{Returns, Again}
+
+Simple and log returns were introduced in \cref{ch:returns}. We re-implement
+them here so \texttt{quant-core} is self-contained:
+
+\begin{lstlisting}[language=Rust]
+pub fn simple_returns(prices: &[f64]) -> Vec<f64> {
+    if prices.len() < 2 { return Vec::new(); }
+    let mut out = Vec::with_capacity(prices.len() - 1);
+    for i in 1..prices.len() {
+        let prev = prices[i - 1];
+        out.push(if prev == 0.0 { 0.0 }
+                 else { (prices[i] - prev) / prev });
+    }
+    out
+}
+\end{lstlisting}
+
+\begin{keyinsight}
+The identity $\ln(1 + r^{\text{simple}}) = r^{\text{log}}$ holds exactly. For
+small returns the two are nearly equal; for large returns they diverge. This
+identity is a cheap property test that catches implementation bugs in either
+function.
+\end{keyinsight}
+
+\section{Moments}
+
+\marginnote{%
+\textbf{Central moment}\\[0.3em]
+$m_k = \dfrac{1}{n}\sum_{i=1}^{n}(x_i - \bar x)^k$\\[0.5em]
+\textbf{Skewness}\\[0.3em]
+$g_1 = \dfrac{m_3}{m_2^{3/2}}$\\[0.3em]
+\textbf{Excess kurtosis}\\[0.3em]
+$g_2 = \dfrac{m_4}{m_2^2} - 3$
+}
+
+The $k$-th central moment is
+\[
+m_k = \frac{1}{n}\sum_{i=1}^{n}(x_i - \bar x)^k.
+\]
+Skewness and excess kurtosis are standardised ratios of these moments:
+
+\begin{align*}
+g_1 &= \frac{m_3}{m_2^{3/2}} \quad \text{(skewness)} \\
+g_2 &= \frac{m_4}{m_2^2} - 3 \quad \text{(excess kurtosis)}
+\end{align*}
+
+The Gaussian distribution has $g_1 = 0$ and $g_2 = 0$. Positive skewness means
+a longer right tail; negative skewness a longer left tail. Positive excess
+kurtosis means heavier tails than Gaussian.
+
+\begin{lstlisting}[language=Rust]
+pub fn skewness(data: &[f64]) -> Result<f64, CoreError> {
+    if data.len() < 3 { return Err(CoreError::InsufficientData { .. }); }
+    let m = mean(data);
+    let m2 = central_moment_2(data, m);
+    let m3 = central_moment_3(data, m);
+    Ok(m3 / m2.powf(1.5))
+}
+
+pub fn excess_kurtosis(data: &[f64]) -> Result<f64, CoreError> {
+    if data.len() < 4 { return Err(CoreError::InsufficientData { .. }); }
+    let m = mean(data);
+    let m2 = central_moment_2(data, m);
+    let m4 = central_moment_4(data, m);
+    Ok(m4 / (m2 * m2) - 3.0)
+}
+\end{lstlisting}
+
+\begin{keyinsight}
+We use the sample variance ($n - 1$ denominator) for $\sigma^2$, consistent
+with \func{qf\_common::compute\_stats}, but use population central moments
+(denominator $n$) for $m_2, m_3, m_4$ in skewness and kurtosis. This is the
+textbook definition; the difference between the two vanishes for large $n$.
+\end{keyinsight}
+
+The \texttt{Moments} trait abstracts over any data source that can produce
+sample moments, so the same analytics work on slices, owned vectors, and
+\texttt{PriceSeries}:
+
+\begin{lstlisting}[language=Rust]
+pub trait Moments {
+    fn mean(&self) -> f64;
+    fn variance(&self) -> Result<f64, CoreError>;
+    fn std_dev(&self) -> Result<f64, CoreError>;
+    fn skewness(&self) -> Result<f64, CoreError>;
+    fn excess_kurtosis(&self) -> Result<f64, CoreError>;
+}
+
+impl Moments for &[f64] { /* delegate to free functions */ }
+impl Moments for Vec<f64> { /* delegate to slice impl */ }
+impl Moments for PriceSeries { /* delegate to slice impl */ }
+\end{lstlisting}
+
+\section{Rolling Windows}
+
+\marginnote{%
+\textbf{Rolling window}\\[0.3em]
+For window $w$ on data of length $n$, the output has length $n - w + 1$ and
+entry $i$ aggregates $\texttt{data}[i..i+w]$.
+}
+
+A rolling window applies an aggregation over each contiguous slice of length
+$w$. The generic \texttt{rolling} function takes a closure, so any
+aggregation (mean, std, max, custom) drops in:
+
+\begin{lstlisting}[language=Rust]
+pub fn rolling<F, T>(window: usize, data: &[f64], f: F)
+    -> Result<Vec<T>, CoreError>
+where F: Fn(&[f64]) -> T
+{
+    if window == 0 || window > data.len() {
+        return Err(CoreError::InvalidWindow { window, len: data.len() });
+    }
+    let mut out = Vec::with_capacity(data.len() - window + 1);
+    for i in 0..=(data.len() - window) {
+        out.push(f(&data[i..i + window]));
+    }
+    Ok(out)
+}
+
+pub fn rolling_mean(window: usize, data: &[f64]) -> Result<Vec<f64>, CoreError> {
+    rolling(window, data, mean)
+}
+\end{lstlisting}
+
+\section{Hand-Rolled Simulation}
+
+\subsection{xorshift64\*}
+
+\marginnote{%
+\textbf{xorshift64\*}\\[0.3em]
+Three shifts and a multiply. Period $2^{64} - 1$. Fast, stateless, good
+enough for Monte Carlo when cryptographic strength is not required.
+}
+
+We implement Vigna's xorshift64\* PRNG: three xor-shifts on a 64-bit state,
+then a multiply by a constant. A seed of zero produces a degenerate stream,
+so we replace it with a fixed default:
+
+\begin{lstlisting}[language=Rust]
+pub struct XorShift64 { state: u64 }
+
+impl Rng for XorShift64 {
+    fn next_u64(&mut self) -> u64 {
+        let mut x = self.state;
+        x ^= x >> 12;
+        x ^= x << 25;
+        x ^= x >> 27;
+        self.state = x;
+        x.wrapping_mul(0x2545_F491_4F6C_DD1D)
+    }
+    fn next_f64(&mut self) -> f64 {
+        (self.next_u64() >> 11) as f64 / (1u64 << 53) as f64
+    }
+}
+\end{lstlisting}
+
+\subsection{Box-Muller Normal}
+
+To sample $N(\mu, \sigma^2)$ without an external library, we use the
+Box-Muller transform: two independent uniforms $u_1, u_2 \sim U(0,1)$ produce
+one standard normal variate
+\[
+Z = \sqrt{-2 \ln u_1} \cos(2\pi u_2).
+\]
+
+\begin{lstlisting}[language=Rust]
+pub fn box_muller_normal<R: Rng + ?Sized>(
+    rng: &mut R, mean: f64, std: f64,
+) -> f64 {
+    let u1 = rng.next_f64().max(f64::EPSILON);
+    let u2 = rng.next_f64();
+    let r = (-2.0 * u1.ln()).sqrt();
+    let theta = 2.0 * PI * u2;
+    mean + std * (r * theta.cos())
+}
+\end{lstlisting}
+
+The \texttt{Distribution} trait lets us plug in new distributions (exponential,
+Student-$t$, jump-diffusion) without touching the simulator:
+
+\begin{lstlisting}[language=Rust]
+pub trait Distribution {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> f64;
+}
+
+pub struct Normal { pub mean: f64, pub std: f64 }
+
+impl Distribution for Normal {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> f64 {
+        box_muller_normal(rng, self.mean, self.std)
+    }
+}
+\end{lstlisting}
+
+\subsection{Geometric Brownian Motion}
+
+\marginnote{%
+\textbf{Exact GBM solution}\\[0.3em]
+$S_{t+\Delta t} = S_t \exp\!\left(\left(\mu - \tfrac{1}{2}\sigma^2\right)\Delta t + \sigma\sqrt{\Delta t}\, Z\right)$\\[0.5em]
+With $\sigma = 0$: $S_T = S_0 e^{\mu T}$, deterministic.
+}
+
+The stochastic differential equation
+\[
+dS_t = \mu S_t\, dt + \sigma S_t\, dW_t
+\]
+has the exact solution
+\[
+S_{t+\Delta t} = S_t \exp\!\left(\left(\mu - \tfrac{1}{2}\sigma^2\right)\Delta t + \sigma\sqrt{\Delta t}\, Z\right),
+\]
+where $Z \sim N(0, 1)$. We simulate one step at a time:
+
+\begin{lstlisting}[language=Rust]
+pub fn gbm_paths<R: Rng + ?Sized>(
+    s0: f64, mu: f64, sigma: f64, t: f64,
+    n_steps: usize, n_paths: usize, rng: &mut R,
+) -> Vec<Vec<f64>> {
+    let dt = t / n_steps as f64;
+    let drift = (mu - 0.5 * sigma * sigma) * dt;
+    let diffusion = sigma * dt.sqrt();
+    let normal = Normal::standard();
+    let mut paths = Vec::with_capacity(n_paths);
+    for _ in 0..n_paths {
+        let mut path = Vec::with_capacity(n_steps + 1);
+        path.push(s0);
+        let mut s = s0;
+        for _ in 0..n_steps {
+            let z = normal.sample(rng);
+            s *= (drift + diffusion * z).exp();
+            path.push(s);
+        }
+        paths.push(path);
+    }
+    paths
+}
+\end{lstlisting}
+
+\begin{keyinsight}
+With $\sigma = 0$, the $Z$ term drops out and $S_T = S_0 \exp(\mu T)$
+deterministically. This is a useful sanity check: a zero-volatility GBM
+should reproduce the risk-free growth exactly, with no RNG dependence.
+\end{keyinsight}
+
+\section{Fat Tails}
+
+\begin{lstlisting}[language=bash]
+$ cargo run -p quant-core --example fat_tails
+1. Pure Gaussian (10k N(0,1) draws)
+  skewness     = +0.0267
+  excess kurt  = +0.0323
+
+2. Fat tails (every 100th draw x10)
+  skewness     = -0.3051
+  excess kurt  = +74.1272
+
+3. GBM terminal prices (10k paths, 252 steps)
+  skewness     = +0.5957
+  excess kurt  = +0.5959
+\end{lstlisting}
+
+The pure Gaussian sample has excess kurtosis near $0$, as expected. Scaling
+every 100th draw by 10 injects rare large moves; the excess kurtosis jumps
+from $\sim 0$ to $\sim 74$. GBM terminal prices are log-normally
+distributed, so they have positive excess kurtosis (heavier right tail than
+a Gaussian) and positive skewness --- a direct consequence of the
+exponential in the exact solution.
+
+\begin{keyinsight}
+A Gaussian model fit to fat-tailed data will price a 4-sigma event as a
+``1-in-15,000-years'' occurrence. The true frequency under fat tails may be
+once a decade. This is why Value-at-Risk computed under Gaussian assumptions
+systematically underestimates tail losses, and why option-implied volatilities
+smile --- the market knows the tails are fatter than Gaussian allows.
+\end{keyinsight}
+
+\section{Exercises}
+
+\begin{enumerate}
+    \item \textbf{Sample vs population variance}: For
+      $x \in \{1, 2, 3, 4, 5\}$, compute both the population variance
+      (denominator $n$) and the sample variance (denominator $n - 1$). How
+      large is the bias? When does it matter?
+
+    \item \textbf{Skewness sign}: Construct a synthetic series with negative
+      skew (long left tail) and one with positive skew. Verify
+      \func{skewness} returns the correct sign. Which one is typical of
+      equity returns?
+
+    \item \textbf{RNG period}: The xorshift64\* generator has period
+      $2^{64} - 1$. Write a test that verifies the first 1000 outputs from
+      seed 42 are distinct, and reason about why ``distinct'' is necessary
+      but not sufficient for a good PRNG.
+
+    \item \textbf{GBM convergence}: Simulate 10\,000 GBM paths over one year
+      (252 steps) with $S_0 = 100$, $\mu = 0.05$, $\sigma = 0.2$. Compute the
+      mean terminal price. Compare with the analytical expectation
+      $E[S_T] = S_0 e^{\mu T}$. How close is the Monte Carlo estimate?
+
+    \item \textbf{Jump-diffusion}: Extend \func{gbm\_paths} with a Poisson
+      jump term: with probability $\lambda \Delta t$ per step, multiply
+      $S_t$ by $e^{J}$ where $J \sim N(\mu_J, \sigma_J^2)$. How does the
+      excess kurtosis of terminal prices change as $\lambda$ grows?
+\end{enumerate}

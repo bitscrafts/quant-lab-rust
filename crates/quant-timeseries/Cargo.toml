@@ -1,0 +1,15 @@
+[package]
+name = "quant-timeseries"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+quant-core = { path = "../quant-core" }
+thiserror = "1.0"
+
+[dev-dependencies]
+approx = "0.5"
+quant-core = { path = "../quant-core" }

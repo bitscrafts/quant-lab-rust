@@ -109,11 +109,48 @@ dependencies = [
 ]
 
 [[package]]
+name = "qf-05-backtest"
+version = "0.1.0"
+dependencies = [
+ "approx",
+ "qf-03-stocks",
+ "qf-04-returns",
+ "qf-common",
+ "thiserror",
+]
+
+[[package]]
 name = "qf-common"
 version = "0.1.0"
 dependencies = [
  "approx",
  "csv",
+ "thiserror",
+]
+
+[[package]]
+name = "quant-core"
+version = "0.1.0"
+dependencies = [
+ "approx",
+ "thiserror",
+]
+
+[[package]]
+name = "quant-timeseries"
+version = "0.1.0"
+dependencies = [
+ "approx",
+ "quant-core",
+ "thiserror",
+]
+
+[[package]]
+name = "quant-vol"
+version = "0.1.0"
+dependencies = [
+ "approx",
+ "quant-core",
  "thiserror",
 ]
 

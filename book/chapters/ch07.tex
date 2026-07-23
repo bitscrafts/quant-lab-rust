@@ -1,0 +1,354 @@
+\section{Learning Objectives}
+
+Most financial time series are non-stationary: prices wander, volatilities
+climb and fall, autocorrelations decay slowly. Naive regression on
+non-stationary data produces spurious correlations and unstable forecasts.
+After completing this chapter you can:
+
+\begin{itemize}
+    \item Fit an ordinary least squares regression by hand via Gaussian
+      elimination with partial pivoting on the normal equations
+    \item Compute standard errors, t-statistics, and $R^2$ without any
+      external statistics crate
+    \item Compute the sample autocorrelation function and read its structure
+    \item Test for a unit root with the Augmented Dickey-Fuller test and
+      interpret the MacKinnon critical value
+    \item Apply López de Prado's fixed-width fractional differentiation to
+      make a series stationary while preserving memory
+    \item Find the minimum differencing order $d$ that achieves stationarity
+      on real and synthetic price series
+\end{itemize}
+
+\begin{keyinsight}
+Traditional differencing ($d = 1$) makes a price series stationary but erases
+all long-range memory --- the resulting signal is essentially noise. Fractional
+differentiation ($0 < d < 1$) achieves stationarity while keeping as much memory
+as the data allow. The smallest such $d$ is the sweet spot for ML features that
+predict future returns.
+\end{keyinsight}
+
+\section{Stationarity}
+
+\marginnote{%
+\textbf{Weak stationarity}\\[0.3em]
+A process is weakly stationary if its mean is constant and its autocovariance
+depends only on the lag, not on time. ``Stationary'' in this chapter means
+weakly stationary.
+}
+
+A time series $\{y_t\}$ is \emph{weakly stationary} if its first two moments are
+time-invariant: $E[y_t] = \mu$ and $\text{Cov}(y_t, y_{t-k}) = \gamma_k$ depend
+only on the lag $k$. A random walk $y_t = y_{t-1} + \varepsilon_t$ fails this
+definition because its variance grows without bound. Non-stationary data break
+the assumptions behind OLS inference, forecast intervals, and most ML models.
+
+The standard remedy is differencing: $\Delta y_t = y_t - y_{t-1}$. With
+$d = 1$ the series becomes stationary but loses all memory of the distant
+past. We need something in between.
+
+\section{OLS via Gaussian Elimination}
+
+\marginnote{%
+\textbf{Normal equations}\\[0.3em]
+$\hat\beta = (X'X)^{-1} X'y$. We never invert $X'X$ explicitly; we solve
+$X'X \hat\beta = X'y$ by Gaussian elimination.
+}
+
+Given a design matrix $X$ (rows are observations, columns are features) and a
+response $y$, the OLS estimator minimises $\|y - X\beta\|^2$. The
+first-order condition gives the normal equations
+\[
+(X'X)\, \hat\beta = X'y.
+\]
+We solve this $k \times k$ linear system by Gaussian elimination with
+partial pivoting: at each column we swap the row with the largest absolute
+pivot into the diagonal position, then eliminate below.
+
+\begin{lstlisting}[language=Rust]
+pub fn ols(x: &[Vec<f64>], y: &[f64]) -> Result<OlsFit, TimeSeriesError> {
+    let n = x.len();
+    let k = x[0].len();
+    // Normal equations: A = X'X, b = X'y.
+    let mut a = vec![vec![0.0_f64; k]; k];
+    let mut b = vec![0.0_f64; k];
+    for (xi, yi) in x.iter().zip(y.iter()) {
+        for i in 0..k {
+            b[i] += xi[i] * yi;
+            for j in 0..k {
+                a[i][j] += xi[i] * xi[j];
+            }
+        }
+    }
+    let coeffs = gauss_solve(&mut a, &mut b)?;
+    // residuals, SSE, SST, R^2, standard errors, t-stats ...
+}
+\end{lstlisting}
+
+\begin{keyinsight}
+Partial pivoting matters. Without it, a small diagonal entry relative to the
+entries below causes catastrophic cancellation when we eliminate. Pivoting
+costs nothing (a row swap per column) and lifts the worst-case error from
+exponential in $k$ to roughly $k$ machine epsilons.
+\end{keyinsight}
+
+Standard errors require the diagonal of $(X'X)^{-1}$. Rather than inverting the
+full matrix, we solve $X'X\, e_j = \text{unit}_j$ for each column $j$ and read
+off $e_j[j] = (X'X)^{-1}_{jj}$. The standard error is
+\[
+\text{SE}(\hat\beta_j) = \sqrt{(X'X)^{-1}_{jj} \, s^2},
+\quad s^2 = \frac{\text{SSE}}{n - k}.
+\]
+The t-statistic is $\hat\beta_j / \text{SE}(\hat\beta_j)$ and
+$R^2 = 1 - \text{SSE}/\text{SST}$.
+
+\section{Autocorrelation Function}
+
+\marginnote{%
+\textbf{Sample ACF}\\[0.3em]
+$\hat\rho_k = \dfrac{\sum_{t=k+1}^{n}(y_t - \bar y)(y_{t-k} - \bar y)}
+{\sum_{t=1}^{n}(y_t - \bar y)^2}$, with $\hat\rho_0 = 1$ by construction.
+}
+
+The autocorrelation at lag $k$ is the correlation between $y_t$ and
+$y_{t-k}$. White noise has $\hat\rho_k \approx 0$ for $k > 0$; an AR(1) with
+coefficient $\phi$ has $\hat\rho_k \approx \phi^k$; a random walk has
+$\hat\rho_k \approx 1$ for all small $k$.
+
+\begin{lstlisting}[language=Rust]
+pub fn acf(data: &[f64], max_lag: usize)
+    -> Result<Vec<f64>, TimeSeriesError>
+{
+    let n = data.len();
+    let ybar: f64 = data.iter().sum::<f64>() / n as f64;
+    let denom: f64 = data.iter()
+        .map(|&v| { let d = v - ybar; d * d })
+        .sum();
+    let mut out = Vec::with_capacity(max_lag + 1);
+    for k in 0..=max_lag {
+        if k == 0 { out.push(1.0); continue; }
+        let cov: f64 = (k..n)
+            .map(|t| (data[t] - ybar) * (data[t - k] - ybar))
+            .sum();
+        out.push(cov / denom);
+    }
+    Ok(out)
+}
+\end{lstlisting}
+
+\section{Augmented Dickey-Fuller Test}
+
+\marginnote{%
+\textbf{ADF regression}\\[0.3em]
+$\Delta y_t = \alpha + \gamma\, y_{t-1} + \sum_{i=1}^{p} \delta_i\, \Delta y_{t-i} + \varepsilon_t$.\\[0.5em]
+Reject $H_0: \gamma = 0$ (unit root) when the t-ratio on $\hat\gamma$ is below
+the MacKinnon 5\% critical value $-2.86$.
+}
+
+The ADF test regresses the first difference on the lagged level and lagged
+differences. The null hypothesis is a unit root ($\gamma = 0$); the alternative
+is stationarity ($\gamma < 0$). Because the test statistic does not follow a
+standard distribution under the null, we compare it to MacKinnon's simulated
+critical values. For a constant-only specification at 5\% significance the
+value is $-2.86$.
+
+\begin{lstlisting}[language=Rust]
+pub const MACKINNON_5PCT: f64 = -2.86;
+
+pub fn adf_test(data: &[f64], lags: usize)
+    -> Result<AdfResult, TimeSeriesError>
+{
+    let n = data.len();
+    let dy: Vec<f64> = (1..n).map(|t| data[t] - data[t - 1]).collect();
+    // Rows: [1, y_{t-1}, dy[t-1], dy[t-2], ..., dy[t-lags]]
+    let mut x: Vec<Vec<f64>> = Vec::new();
+    let mut y: Vec<f64> = Vec::new();
+    for t in (lags + 1)..n {
+        let mut row = Vec::with_capacity(lags + 2);
+        row.push(1.0);
+        row.push(data[t - 1]);
+        for i in 1..=lags { row.push(dy[t - 1 - i]); }
+        y.push(dy[t - 1]);
+        x.push(row);
+    }
+    let fit = ols(&x, &y)?;
+    let stat = fit.t_stats[1]; // gamma is index 1 (after intercept)
+    Ok(AdfResult {
+        statistic: stat,
+        critical_value: MACKINNON_5PCT,
+        lags,
+        is_stationary: stat < MACKINNON_5PCT,
+    })
+}
+\end{lstlisting}
+
+\begin{keyinsight}
+The lagged-level coefficient $\gamma$ is the key. If $\gamma = 0$, shocks to
+$y_t$ are permanent (unit root). If $\gamma < 0$, shocks decay at rate
+$1 + \gamma$ per period. The more negative $\gamma$, the faster the series
+reverts to the mean --- and the more strongly stationary.
+\end{keyinsight}
+
+\section{Fractional Differentiation}
+
+\marginnote{%
+\textbf{Binomial series}\\[0.3em]
+$(1 - B)^d = \sum_{k=0}^{\infty} w_k B^k$, where
+$w_0 = 1$ and $w_k = -w_{k-1}\,\dfrac{d - k + 1}{k}$.\\[0.5em]
+For $d = 1$: $w = [1, -1, 0, \ldots]$.\\
+For $d \in (0, 1)$: infinitely many non-zero weights decaying in magnitude.
+}
+
+The backward shift $B$ satisfies $B y_t = y_{t-1}$. The first difference is
+$(1 - B) y_t$. Fractional differentiation generalises this to
+$(1 - B)^d$ for any real $d \in [0, 2]$. The binomial series gives the weights:
+
+\begin{align*}
+w_0 &= 1, \\
+w_k &= -w_{k-1}\, \frac{d - k + 1}{k} \quad (k \geq 1).
+\end{align*}
+
+For $d = 1$ the weights are $[1, -1, 0, 0, \ldots]$ --- the ordinary first
+difference. For $0 < d < 1$ infinitely many weights are non-zero, with
+$|w_k|$ decaying roughly as $k^{-(1 + d)}$. We truncate when
+$|w_k| < \text{threshold}$ (the fixed-width window of López de Prado, AFML
+Ch.5):
+
+\begin{lstlisting}[language=Rust]
+pub fn ffd_weights(d: f64, threshold: f64)
+    -> Result<Vec<f64>, TimeSeriesError>
+{
+    let mut weights = vec![1.0_f64];
+    let mut w = 1.0_f64;
+    let mut k = 1_usize;
+    loop {
+        w = -w * (d - (k as f64) + 1.0) / k as f64;
+        if w.abs() < threshold { break; }
+        weights.push(w);
+        if k > 10_000 { break; }
+        k += 1;
+    }
+    Ok(weights)
+}
+\end{lstlisting}
+
+\begin{keyinsight}
+The loop breaks \emph{before} pushing a weight below the threshold. This
+makes $d = 0$ yield $[1.0]$ (identity, full memory) and $d = 1$ yield
+$[1.0, -1.0]$ exactly (ordinary first difference, no memory). Every
+intermediate $d$ keeps a finite prefix of the binomial series.
+\end{keyinsight}
+
+Applying the window is a weighted moving average over the last
+$\texttt{weights.len()}$ observations:
+
+\begin{lstlisting}[language=Rust]
+pub fn frac_diff(data: &[f64], d: f64, threshold: f64)
+    -> Result<Vec<f64>, TimeSeriesError>
+{
+    let weights = ffd_weights(d, threshold)?;
+    let wlen = weights.len();
+    let mut out = Vec::with_capacity(data.len() - wlen + 1);
+    for t in (wlen - 1)..data.len() {
+        let acc: f64 = weights.iter()
+            .enumerate()
+            .map(|(k, &w)| w * data[t - k])
+            .sum();
+        out.push(acc);
+    }
+    Ok(out)
+}
+\end{lstlisting}
+
+\subsection{Finding the Minimum $d$}
+
+Binary search over $d \in [0, 1]$ returns the smallest order for which the
+ADF test rejects the unit root. We test the endpoints first: if $d = 0$
+already passes, no differencing is needed; if $d = 1$ fails, we return $1.0$
+conservatively.
+
+\begin{lstlisting}[language=Rust]
+pub fn find_min_d(data: &[f64], threshold: f64, tolerance: f64)
+    -> Result<f64, TimeSeriesError>
+{
+    let passes = |d: f64| {
+        let diff = frac_diff(data, d, threshold)?;
+        Ok(adf_test(&diff, 1)?.is_stationary)
+    };
+    if passes(0.0)? { return Ok(0.0); }
+    if !passes(1.0)? { return Ok(1.0); }
+    let (mut lo, mut hi) = (0.0_f64, 1.0_f64);
+    while hi - lo > tolerance {
+        let mid = 0.5 * (lo + hi);
+        if passes(mid)? { hi = mid; } else { lo = mid; }
+    }
+    Ok(hi)
+}
+\end{lstlisting}
+
+\section{The Stationarity-Memory Tradeoff in Action}
+
+\begin{lstlisting}[language=bash]
+$ cargo run -p quant-timeseries --example stationarity
+==============================
+Stationarity Analysis
+==============================
+
+Random Walk (500 steps):
+  ADF statistic: -1.1064
+  Critical (5%):  -2.86
+  Stationary:     NO
+
+First Difference (d=1):
+  ADF statistic: -15.8418
+  Stationary:    YES
+  ACF(1):        -0.0269 (memory destroyed)
+
+Fractional Diff (d=0.4):
+  ADF statistic: -4.8991
+  Stationary:    YES
+  ACF(1):         0.6878 (memory preserved)
+==============================
+\end{lstlisting}
+
+The random walk has an ADF statistic of $-1.1$, well above the $-2.86$
+critical value: we cannot reject the unit root. First differencing fixes
+stationarity (statistic plunges to $-15.8$) but the ACF at lag 1 is
+essentially zero --- all memory is gone. Fractional differentiation with
+$d = 0.4$ also rejects the unit root, but the ACF at lag 1 is $0.69$:
+most of the long-range information survives.
+
+\begin{keyinsight}
+This is the core finding of AFML Ch.5: there exists a $d^\star \in (0, 1)$
+that simultaneously satisfies the stationarity requirement of statistical
+inference \emph{and} the memory requirement of predictive ML features. Any
+$d < d^\star$ is non-stationary; any $d > d^\star$ throws away more memory
+than necessary.
+\end{keyinsight}
+
+\section{Exercises}
+
+\begin{enumerate}
+    \item \textbf{Partial autocorrelation}: Implement the PACF via the
+      Yule-Walker equations. For an AR($p$) process, PACF should cut off after
+      lag $p$. Verify on simulated AR(2) data with $\phi_1 = 0.5$,
+      $\phi_2 = -0.3$.
+
+    \item \textbf{KPSS test}: The KPSS test has the opposite null hypothesis
+      to ADF --- $H_0$ is stationarity. Implement it and compare the
+      conclusions on white noise, random walk, and fractionally differenced
+      series. Where do the two tests disagree?
+
+    \item \textbf{Real returns}: Generate a long GBM price path and find the
+      minimum $d$ for stationarity. Repeat for different volatilities
+      $\sigma \in \{0.1, 0.2, 0.4\}$. Does $\sigma$ affect $d^\star$?
+
+    \item \textbf{Expanding-window frac\_diff}: The fixed-width window drops
+      the first $K - 1$ observations. Implement an expanding-window variant
+      that uses all available history for the early points (weights are
+      truncated, not zero). What is the tradeoff versus fixed-width?
+
+    \item \textbf{Lag selection for ADF}: The AIC and BIC criteria pick the
+      number of lagged differences automatically. Implement AIC-based lag
+      selection and check whether the stationarity conclusion changes for
+      your test series.
+\end{enumerate}
