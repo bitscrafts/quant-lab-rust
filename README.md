@@ -1,5 +1,7 @@
 # Learning Quantitative Finance in Rust
 
+[![CI](https://github.com/bitscrafts/quant-lab-rust/actions/workflows/ci.yml/badge.svg)](https://github.com/bitscrafts/quant-lab-rust/actions/workflows/ci.yml)
+
 **[Download the Book (PDF)](book/build/quant-finance-book.pdf)**
 
 A progressive learning journey from basic Kaggle projects to advanced quant research, implemented from first principles in Rust with a companion LaTeX book.
@@ -206,6 +208,32 @@ cargo clippy --all-targets -- -D warnings
 
 ```bash
 cargo doc --open
+```
+
+## CI/CD
+
+This project uses GitHub Actions for continuous integration. Every push and pull request triggers:
+
+| Job | Description | Time |
+|-----|-------------|------|
+| **Format** | `cargo fmt --check` | ~30s |
+| **Clippy** | `cargo clippy -D warnings` | ~2min |
+| **Test** | `cargo test --all-features` | ~3min |
+| **Build** | `cargo build --release` | ~5min |
+| **Docs** | `cargo doc --no-deps` | ~2min |
+
+### Workflow Features
+
+- **Concurrency control**: Cancels in-progress runs when new commits are pushed
+- **Aggressive caching**: Caches `~/.cargo` and `target/` for faster builds
+- **Parallel jobs**: Format, clippy, test, build, and docs run in parallel
+- **Strict warnings**: `RUSTFLAGS=-Dwarnings` fails on any warning
+
+### Badge
+
+Add to your README:
+```markdown
+[![CI](https://github.com/bitscrafts/quant-lab-rust/actions/workflows/ci.yml/badge.svg)](https://github.com/bitscrafts/quant-lab-rust/actions/workflows/ci.yml)
 ```
 
 ## References
