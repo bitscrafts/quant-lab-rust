@@ -10,8 +10,8 @@
 //!
 //! # Modules
 //!
-//! - [`ols`]: `OlsFit`, `ols`, Gaussian elimination
-//! - [`acf`]: autocorrelation function
+//! - [`mod@ols`]: `OlsFit`, `ols`, Gaussian elimination
+//! - [`mod@acf`]: autocorrelation function
 //! - [`adf`]: `AdfResult`, `adf_test`, `MACKINNON_5PCT`
 //! - [`fracdiff`]: `ffd_weights`, `frac_diff`, `find_min_d`
 //!

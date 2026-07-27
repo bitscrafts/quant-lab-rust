@@ -284,7 +284,7 @@ fn test_win_rate_calculation() {
     struct Alternating;
     impl Strategy for Alternating {
         fn signal(&self, _data: &[Ohlcv], i: usize) -> Signal {
-            if i % 2 == 0 {
+            if i.is_multiple_of(2) {
                 Signal::Buy
             } else {
                 Signal::Sell

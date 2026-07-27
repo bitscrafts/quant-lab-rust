@@ -9,7 +9,7 @@
 //!
 //! - [`series`]: `PriceSeries` newtype, simple and log returns
 //! - [`moments`]: mean, variance, skewness, excess kurtosis, `Moments` trait
-//! - [`rolling`]: generic rolling window, `RollingWindow` trait
+//! - [`mod@rolling`]: generic rolling window, `RollingWindow` trait
 //! - [`sim`]: `XorShift64` RNG, `Normal` distribution via Box-Muller, `gbm_paths`
 //!
 //! # Example
