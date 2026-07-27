@@ -37,7 +37,7 @@ pub mod error;
 pub mod signal;
 pub mod strategy;
 
-pub use backtest::{run_backtest, BacktestConfig, BacktestResult, Trade};
+pub use backtest::{BacktestConfig, BacktestResult, Trade, run_backtest};
 pub use error::BacktestError;
 pub use signal::{Position, Signal};
 pub use strategy::{BuyAndHold, SmaCrossover, Strategy};

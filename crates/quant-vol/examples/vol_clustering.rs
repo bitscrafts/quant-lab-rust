@@ -77,9 +77,21 @@ fn main() {
     println!("Conditional variance path (GARCH) at key points:");
     println!("  t=0    (calm start):  {:.6}", sigma2_path[0]);
     println!("  t={n_calm} (shock start): {:.6}", sigma2_path[n_calm]);
-    println!("  t={} (shock mid):   {:.6}", n_calm + n_shock / 2, sigma2_path[n_calm + n_shock / 2]);
-    println!("  t={} (calm resume): {:.6}", n_calm + n_shock, sigma2_path[n_calm + n_shock]);
-    println!("  t={} (end):         {:.6}", returns.len() - 1, sigma2_path[returns.len() - 1]);
+    println!(
+        "  t={} (shock mid):   {:.6}",
+        n_calm + n_shock / 2,
+        sigma2_path[n_calm + n_shock / 2]
+    );
+    println!(
+        "  t={} (calm resume): {:.6}",
+        n_calm + n_shock,
+        sigma2_path[n_calm + n_shock]
+    );
+    println!(
+        "  t={} (end):         {:.6}",
+        returns.len() - 1,
+        sigma2_path[returns.len() - 1]
+    );
     println!();
 
     // LL comparison.

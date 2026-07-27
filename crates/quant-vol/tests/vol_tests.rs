@@ -2,16 +2,10 @@
 
 use approx::assert_relative_eq;
 use quant_core::{Distribution, Normal, XorShift64};
-use quant_vol::{ewma_vol, ArchModel, GarchModel, VolError};
+use quant_vol::{ArchModel, GarchModel, VolError, ewma_vol};
 
 // Helper: generate GARCH(1,1) returns from a known model.
-fn garch11_returns(
-    omega: f64,
-    alpha: f64,
-    beta: f64,
-    n: usize,
-    rng: &mut XorShift64,
-) -> Vec<f64> {
+fn garch11_returns(omega: f64, alpha: f64, beta: f64, n: usize, rng: &mut XorShift64) -> Vec<f64> {
     let normal = Normal::standard();
     let mut sigma2 = omega / (1.0 - alpha - beta); // start at long-run variance
     let mut returns = Vec::with_capacity(n);

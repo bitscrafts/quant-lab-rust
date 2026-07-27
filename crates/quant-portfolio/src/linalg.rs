@@ -76,7 +76,11 @@ pub fn solve(a: &mut [Vec<f64>], b: &mut [f64]) -> Result<Vec<f64>, PortfolioErr
     let mut x = vec![0.0_f64; n];
     for i in (0..n).rev() {
         let ai = &a[i];
-        let tail_sum: f64 = ai[i + 1..n].iter().zip(x[i + 1..n].iter()).map(|(a, x)| a * x).sum();
+        let tail_sum: f64 = ai[i + 1..n]
+            .iter()
+            .zip(x[i + 1..n].iter())
+            .map(|(a, x)| a * x)
+            .sum();
         let diag = ai[i];
         if diag.abs() < 1e-12 {
             return Err(PortfolioError::SingularCovariance(format!(

@@ -34,7 +34,7 @@ pub mod fracdiff;
 pub mod ols;
 
 pub use acf::acf;
-pub use adf::{adf_test, AdfResult, MACKINNON_5PCT};
+pub use adf::{AdfResult, MACKINNON_5PCT, adf_test};
 pub use error::TimeSeriesError;
-pub use fracdiff::{find_min_d, frac_diff, ffd_weights};
-pub use ols::{ols, OlsFit};
+pub use fracdiff::{ffd_weights, find_min_d, frac_diff};
+pub use ols::{OlsFit, ols};

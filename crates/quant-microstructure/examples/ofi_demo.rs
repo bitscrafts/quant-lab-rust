@@ -5,7 +5,7 @@
 //! square-root impact model.
 
 use quant_microstructure::{
-    execution_cost, order_flow_imbalance, trade_imbalance, BookSnapshot, Level, Side, Trade,
+    BookSnapshot, Level, Side, Trade, execution_cost, order_flow_imbalance, trade_imbalance,
 };
 
 fn main() {
@@ -13,28 +13,68 @@ fn main() {
     let snapshots = vec![
         BookSnapshot {
             timestamp: 1,
-            best_bid: Some(Level { price: 100, quantity: 50, order_count: 1 }),
-            best_ask: Some(Level { price: 101, quantity: 40, order_count: 1 }),
+            best_bid: Some(Level {
+                price: 100,
+                quantity: 50,
+                order_count: 1,
+            }),
+            best_ask: Some(Level {
+                price: 101,
+                quantity: 40,
+                order_count: 1,
+            }),
         },
         BookSnapshot {
             timestamp: 2,
-            best_bid: Some(Level { price: 100, quantity: 60, order_count: 1 }),
-            best_ask: Some(Level { price: 101, quantity: 35, order_count: 1 }),
+            best_bid: Some(Level {
+                price: 100,
+                quantity: 60,
+                order_count: 1,
+            }),
+            best_ask: Some(Level {
+                price: 101,
+                quantity: 35,
+                order_count: 1,
+            }),
         },
         BookSnapshot {
             timestamp: 3,
-            best_bid: Some(Level { price: 100, quantity: 75, order_count: 1 }),
-            best_ask: Some(Level { price: 101, quantity: 25, order_count: 1 }),
+            best_bid: Some(Level {
+                price: 100,
+                quantity: 75,
+                order_count: 1,
+            }),
+            best_ask: Some(Level {
+                price: 101,
+                quantity: 25,
+                order_count: 1,
+            }),
         },
         BookSnapshot {
             timestamp: 4,
-            best_bid: Some(Level { price: 100, quantity: 65, order_count: 1 }),
-            best_ask: Some(Level { price: 101, quantity: 30, order_count: 1 }),
+            best_bid: Some(Level {
+                price: 100,
+                quantity: 65,
+                order_count: 1,
+            }),
+            best_ask: Some(Level {
+                price: 101,
+                quantity: 30,
+                order_count: 1,
+            }),
         },
         BookSnapshot {
             timestamp: 5,
-            best_bid: Some(Level { price: 100, quantity: 55, order_count: 1 }),
-            best_ask: Some(Level { price: 101, quantity: 45, order_count: 1 }),
+            best_bid: Some(Level {
+                price: 100,
+                quantity: 55,
+                order_count: 1,
+            }),
+            best_ask: Some(Level {
+                price: 101,
+                quantity: 45,
+                order_count: 1,
+            }),
         },
     ];
 
@@ -49,9 +89,24 @@ fn main() {
 
     // Trades from a market-buy sweep.
     let trades = vec![
-        Trade { price: 101, quantity: 30, side: Side::Bid, timestamp: 10 },
-        Trade { price: 102, quantity: 50, side: Side::Bid, timestamp: 11 },
-        Trade { price: 100, quantity: 20, side: Side::Ask, timestamp: 12 },
+        Trade {
+            price: 101,
+            quantity: 30,
+            side: Side::Bid,
+            timestamp: 10,
+        },
+        Trade {
+            price: 102,
+            quantity: 50,
+            side: Side::Bid,
+            timestamp: 11,
+        },
+        Trade {
+            price: 100,
+            quantity: 20,
+            side: Side::Ask,
+            timestamp: 12,
+        },
     ];
     let ti = trade_imbalance(&trades);
     println!("\n=== Trade imbalance ===");

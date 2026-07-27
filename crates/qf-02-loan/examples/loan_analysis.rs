@@ -10,8 +10,8 @@
 //!   cargo run -p qf-02-loan --example loan_analysis
 
 use qf_02_loan::{
-    auc, roc_curve, FeatureExtractor, HomeOwnership, LinearScorer, LoanApplication, Normalizer,
-    OneHotEncoder, BinaryClassifier,
+    BinaryClassifier, FeatureExtractor, HomeOwnership, LinearScorer, LoanApplication, Normalizer,
+    OneHotEncoder, auc, roc_curve,
 };
 
 fn main() {
@@ -31,10 +31,7 @@ fn main() {
 
     // Extract features for all applications
     println!("=== Feature Engineering ===");
-    let features: Vec<Vec<f64>> = applications
-        .iter()
-        .map(extract_features)
-        .collect();
+    let features: Vec<Vec<f64>> = applications.iter().map(extract_features).collect();
 
     println!("Features per application: {}", features[0].len());
     println!("  - Loan-to-income ratio");
@@ -63,10 +60,7 @@ fn main() {
     println!("Linear scorer with {} weights + bias", 7);
 
     // Score all applications
-    let scores: Vec<f64> = normalized
-        .iter()
-        .map(|f| scorer.predict_proba(f))
-        .collect();
+    let scores: Vec<f64> = normalized.iter().map(|f| scorer.predict_proba(f)).collect();
 
     let labels: Vec<bool> = applications.iter().map(|a| a.defaulted).collect();
 
@@ -128,14 +122,38 @@ fn create_synthetic_data() -> Vec<LoanApplication> {
     vec![
         // Low-risk applications (grade A-B, low DTI, homeowners)
         LoanApplication::new(80000.0, 15000.0, 6.5, 0.15, 1, HomeOwnership::Own, false),
-        LoanApplication::new(95000.0, 20000.0, 7.0, 0.18, 2, HomeOwnership::Mortgage, false),
+        LoanApplication::new(
+            95000.0,
+            20000.0,
+            7.0,
+            0.18,
+            2,
+            HomeOwnership::Mortgage,
+            false,
+        ),
         LoanApplication::new(120000.0, 25000.0, 6.8, 0.12, 1, HomeOwnership::Own, false),
-        LoanApplication::new(75000.0, 10000.0, 7.2, 0.20, 2, HomeOwnership::Mortgage, false),
+        LoanApplication::new(
+            75000.0,
+            10000.0,
+            7.2,
+            0.20,
+            2,
+            HomeOwnership::Mortgage,
+            false,
+        ),
         LoanApplication::new(85000.0, 18000.0, 6.9, 0.16, 1, HomeOwnership::Own, false),
         // Medium-risk applications (grade C-D, moderate DTI)
         LoanApplication::new(55000.0, 20000.0, 12.5, 0.28, 3, HomeOwnership::Rent, false),
         LoanApplication::new(48000.0, 15000.0, 14.0, 0.32, 4, HomeOwnership::Rent, false),
-        LoanApplication::new(62000.0, 22000.0, 11.8, 0.25, 3, HomeOwnership::Mortgage, false),
+        LoanApplication::new(
+            62000.0,
+            22000.0,
+            11.8,
+            0.25,
+            3,
+            HomeOwnership::Mortgage,
+            false,
+        ),
         LoanApplication::new(52000.0, 18000.0, 13.5, 0.30, 4, HomeOwnership::Rent, true),
         LoanApplication::new(45000.0, 16000.0, 15.0, 0.35, 4, HomeOwnership::Rent, true),
         // High-risk applications (grade E-G, high DTI, renters)
@@ -145,10 +163,26 @@ fn create_synthetic_data() -> Vec<LoanApplication> {
         LoanApplication::new(38000.0, 22000.0, 19.0, 0.45, 6, HomeOwnership::Rent, true),
         LoanApplication::new(30000.0, 12000.0, 21.0, 0.50, 7, HomeOwnership::Rent, true),
         // Edge cases
-        LoanApplication::new(65000.0, 25000.0, 10.5, 0.22, 3, HomeOwnership::Mortgage, false),
+        LoanApplication::new(
+            65000.0,
+            25000.0,
+            10.5,
+            0.22,
+            3,
+            HomeOwnership::Mortgage,
+            false,
+        ),
         LoanApplication::new(42000.0, 14000.0, 16.0, 0.38, 5, HomeOwnership::Rent, true),
         LoanApplication::new(58000.0, 19000.0, 13.0, 0.28, 4, HomeOwnership::Rent, false),
-        LoanApplication::new(72000.0, 30000.0, 9.5, 0.20, 2, HomeOwnership::Mortgage, false),
+        LoanApplication::new(
+            72000.0,
+            30000.0,
+            9.5,
+            0.20,
+            2,
+            HomeOwnership::Mortgage,
+            false,
+        ),
         LoanApplication::new(40000.0, 20000.0, 17.5, 0.40, 5, HomeOwnership::Rent, true),
     ]
 }

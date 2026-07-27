@@ -32,8 +32,8 @@ pub mod returns;
 pub mod risk;
 pub mod volatility;
 
-pub use drawdown::{drawdown, drawdown_stats, max_drawdown, DrawdownStats};
+pub use drawdown::{DrawdownStats, drawdown, drawdown_stats, max_drawdown};
 pub use error::ReturnsError;
-pub use returns::{cumulative_returns, log_returns, simple_returns, Returns};
+pub use returns::{Returns, cumulative_returns, log_returns, simple_returns};
 pub use risk::{annualized_sharpe, sharpe_ratio, sortino_ratio};
 pub use volatility::{annualized_volatility, rolling_volatility, volatility};

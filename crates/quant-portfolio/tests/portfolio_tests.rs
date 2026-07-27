@@ -8,10 +8,10 @@
 
 use approx::assert_abs_diff_eq;
 use quant_portfolio::{
-    alpha, beta, capital_market_line, efficient_frontier_point, historical_cvar, historical_var,
-    min_variance_portfolio, portfolio_return, portfolio_variance, portfolio_volatility,
-    sharpe_ratio, sml, tangency_portfolio, two_asset_frontier_point,
-    two_asset_min_variance_weight, two_fund_separation, Portfolio,
+    Portfolio, alpha, beta, capital_market_line, efficient_frontier_point, historical_cvar,
+    historical_var, min_variance_portfolio, portfolio_return, portfolio_variance,
+    portfolio_volatility, sharpe_ratio, sml, tangency_portfolio, two_asset_frontier_point,
+    two_asset_min_variance_weight, two_fund_separation,
 };
 
 /// Two uncorrelated assets used throughout the suite.
@@ -42,7 +42,11 @@ fn test_portfolio_variance_diagonal() {
 fn test_portfolio_volatility() {
     let w = vec![0.5, 0.5];
     let cov = vec![vec![0.04, 0.0], vec![0.0, 0.09]];
-    assert_abs_diff_eq!(portfolio_volatility(&w, &cov), 0.0325_f64.sqrt(), epsilon = 1e-12);
+    assert_abs_diff_eq!(
+        portfolio_volatility(&w, &cov),
+        0.0325_f64.sqrt(),
+        epsilon = 1e-12
+    );
 }
 
 #[test]
@@ -133,7 +137,11 @@ fn test_tangency_portfolio_max_sharpe() {
     for i in 0..=10 {
         let w = vec![i as f64 * 0.1, 1.0 - i as f64 * 0.1];
         let s = sharpe_ratio(&w, &mu, &cov, rf);
-        assert!(tan.sharpe + 1e-9 >= s, "grid Sharpe {s} beats tangency {}", tan.sharpe);
+        assert!(
+            tan.sharpe + 1e-9 >= s,
+            "grid Sharpe {s} beats tangency {}",
+            tan.sharpe
+        );
     }
 }
 

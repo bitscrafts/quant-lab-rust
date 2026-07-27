@@ -3,9 +3,9 @@
 use approx::assert_relative_eq;
 use quant_core::XorShift64;
 use quant_stochastic::{
-    bs_call, bs_put, brownian_motion, exponential_variate, gbm, jump_diffusion,
+    StochError, brownian_motion, bs_call, bs_put, exponential_variate, gbm, jump_diffusion,
     mc_call, mc_call_antithetic, mc_put, normal_cdf, poisson_count, poisson_process,
-    quadratic_variation, StochError,
+    quadratic_variation,
 };
 
 // R9.2: Brownian motion -------------------------------------------------------
@@ -82,7 +82,9 @@ fn test_poisson_rate() {
     let t = 1.0;
     let expected = rate * t;
     let n_trials = 5000;
-    let counts: Vec<usize> = (0..n_trials).map(|_| poisson_count(rate, t, &mut rng)).collect();
+    let counts: Vec<usize> = (0..n_trials)
+        .map(|_| poisson_count(rate, t, &mut rng))
+        .collect();
     let mean = counts.iter().sum::<usize>() as f64 / n_trials as f64;
     assert!(
         (mean - expected).abs() / expected < 0.05,
@@ -96,7 +98,9 @@ fn test_poisson_interarrival() {
     let mut rng = XorShift64::new(42);
     let rate = 3.0_f64;
     let n = 50000;
-    let gaps: Vec<f64> = (0..n).map(|_| exponential_variate(rate, &mut rng)).collect();
+    let gaps: Vec<f64> = (0..n)
+        .map(|_| exponential_variate(rate, &mut rng))
+        .collect();
     let mean = gaps.iter().sum::<f64>() / n as f64;
     let expected_mean = 1.0 / rate;
     assert!(
@@ -150,7 +154,9 @@ fn test_mc_call_convergence() {
     assert!(
         (large.price - bs).abs() < 3.0 * large.std_error + 1e-6,
         "large-N price {:.4} should be close to BS {:.4} (se={:.4})",
-        large.price, bs, large.std_error
+        large.price,
+        bs,
+        large.std_error
     );
     // The large-N estimate should be much closer than the small-N one.
     assert!(
@@ -173,7 +179,9 @@ fn test_mc_call_at_the_money() {
     assert!(
         (mc.price - bs).abs() < 4.0 * mc.std_error,
         "MC ATM call {:.4} should be close to BS {:.4} (se={:.4})",
-        mc.price, bs, mc.std_error
+        mc.price,
+        bs,
+        mc.std_error
     );
 }
 
@@ -216,7 +224,8 @@ fn test_mc_in_the_money() {
     assert!(
         (mc.price - intrinsic).abs() < 0.5,
         "deep ITM call {:.4} should be close to intrinsic {:.4}",
-        mc.price, intrinsic
+        mc.price,
+        intrinsic
     );
 }
 
@@ -278,14 +287,16 @@ fn test_antithetic_variance_reduction() {
     assert!(
         anti.std_error <= plain.std_error * 1.05,
         "antithetic SE {:.6} should be <= plain SE {:.6}",
-        anti.std_error, plain.std_error,
+        anti.std_error,
+        plain.std_error,
     );
     // Both should still be near BS.
     let bs = bs_call(s0, k, r, sigma, t);
     assert!(
         (anti.price - bs).abs() < 4.0 * anti.std_error + 1e-6,
         "antithetic price {:.4} should be close to BS {:.4}",
-        anti.price, bs
+        anti.price,
+        bs
     );
 }
 
@@ -312,7 +323,10 @@ fn test_stoch_smoke() {
     assert!(bs.is_finite() && bs > 0.0);
 
     let ncd = normal_cdf(1.96);
-    assert!((ncd - 0.975).abs() < 1e-3, "Phi(1.96) ~ 0.975, got {ncd:.6}");
+    assert!(
+        (ncd - 0.975).abs() < 1e-3,
+        "Phi(1.96) ~ 0.975, got {ncd:.6}"
+    );
 
     let bs_p = bs_put(100.0, 100.0, 0.05, 0.2, 1.0);
     assert!(bs_p.is_finite() && bs_p > 0.0);

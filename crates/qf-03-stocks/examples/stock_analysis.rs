@@ -87,7 +87,11 @@ fn main() {
                     candle.low,
                     candle.close,
                     candle.body(),
-                    if candle.is_bullish() { "Bullish" } else { "Bearish" }
+                    if candle.is_bullish() {
+                        "Bullish"
+                    } else {
+                        "Bearish"
+                    }
                 );
             }
         }

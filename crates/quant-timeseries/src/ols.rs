@@ -132,10 +132,7 @@ pub fn ols(x: &[Vec<f64>], y: &[f64]) -> Result<OlsFit, TimeSeriesError> {
 /// Mutates `a` (the matrix) and `b` (the right-hand side). Returns the
 /// solution vector or [`TimeSeriesError::Singular`] when a zero pivot is
 /// encountered.
-pub(crate) fn gauss_solve(
-    a: &mut [Vec<f64>],
-    b: &mut [f64],
-) -> Result<Vec<f64>, TimeSeriesError> {
+pub(crate) fn gauss_solve(a: &mut [Vec<f64>], b: &mut [f64]) -> Result<Vec<f64>, TimeSeriesError> {
     let n = a.len();
     // Forward elimination with partial pivoting.
     for col in 0..n {
@@ -176,7 +173,11 @@ pub(crate) fn gauss_solve(
     let mut x = vec![0.0_f64; n];
     for i in (0..n).rev() {
         let ai = &a[i];
-        let tail_sum: f64 = ai[i + 1..n].iter().zip(x[i + 1..n].iter()).map(|(a, x)| a * x).sum();
+        let tail_sum: f64 = ai[i + 1..n]
+            .iter()
+            .zip(x[i + 1..n].iter())
+            .map(|(a, x)| a * x)
+            .sum();
         let diag = ai[i];
         if diag.abs() < 1e-12 {
             return Err(TimeSeriesError::Singular);

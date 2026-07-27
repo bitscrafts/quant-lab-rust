@@ -36,31 +36,58 @@ fn main() {
     let h_vol = 1e-4;
     let h_t = 1e-4;
 
-    println!("{:<8} {:>12} {:>12} {:>12}", "Greek", "Analytical", "FiniteDiff", "|diff|");
+    println!(
+        "{:<8} {:>12} {:>12} {:>12}",
+        "Greek", "Analytical", "FiniteDiff", "|diff|"
+    );
     println!("{}", "-".repeat(52));
 
     // Delta (call and put)
     for &(is_call, label) in &[(true, "Delta_c"), (false, "Delta_p")] {
         let a = delta(s0, k, r, sigma, t, is_call);
         let f = delta_fd(s0, k, r, sigma, t, is_call, h_spot);
-        println!("{:<8} {:>12.6} {:>12.6} {:>12.2e}", label, a, f, (a - f).abs());
+        println!(
+            "{:<8} {:>12.6} {:>12.6} {:>12.2e}",
+            label,
+            a,
+            f,
+            (a - f).abs()
+        );
     }
 
     // Gamma (same for call/put)
     let g_a = gamma(s0, k, r, sigma, t);
     let g_f = gamma_fd(s0, k, r, sigma, t, 1e-3);
-    println!("{:<8} {:>12.6} {:>12.6} {:>12.2e}", "Gamma", g_a, g_f, (g_a - g_f).abs());
+    println!(
+        "{:<8} {:>12.6} {:>12.6} {:>12.2e}",
+        "Gamma",
+        g_a,
+        g_f,
+        (g_a - g_f).abs()
+    );
 
     // Vega (same for call/put)
     let v_a = vega(s0, k, r, sigma, t);
     let v_f = vega_fd(s0, k, r, sigma, t, h_vol);
-    println!("{:<8} {:>12.6} {:>12.6} {:>12.2e}", "Vega", v_a, v_f, (v_a - v_f).abs());
+    println!(
+        "{:<8} {:>12.6} {:>12.6} {:>12.2e}",
+        "Vega",
+        v_a,
+        v_f,
+        (v_a - v_f).abs()
+    );
 
     // Theta (call and put). Forward difference in t.
     for &(is_call, label) in &[(true, "Theta_c"), (false, "Theta_p")] {
         let a = theta(s0, k, r, sigma, t, is_call);
         let f = theta_fd(s0, k, r, sigma, t, is_call, h_t);
-        println!("{:<8} {:>12.6} {:>12.6} {:>12.2e}", label, a, f, (a - f).abs());
+        println!(
+            "{:<8} {:>12.6} {:>12.6} {:>12.2e}",
+            label,
+            a,
+            f,
+            (a - f).abs()
+        );
     }
 
     // Rho (no finite-difference version in this crate; analytical only).
@@ -72,7 +99,10 @@ fn main() {
     println!();
     println!("Gamma is identical for calls and puts (d1 is).");
     println!("Vega  is identical for calls and puts (d1 is).");
-    println!("Theta_p = Theta_c + r * K * exp(-rT) = {:.6}", r * k * (-r * t).exp());
+    println!(
+        "Theta_p = Theta_c + r * K * exp(-rT) = {:.6}",
+        r * k * (-r * t).exp()
+    );
     println!();
     println!("==============================");
 }

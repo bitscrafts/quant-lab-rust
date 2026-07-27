@@ -48,12 +48,12 @@ pub mod tangency;
 pub use capm::{alpha, beta, sml};
 pub use error::PortfolioError;
 pub use frontier::{
-    efficient_frontier_point, min_variance_portfolio, two_asset_frontier_point,
-    two_asset_min_variance_weight, FrontierPoint,
+    FrontierPoint, efficient_frontier_point, min_variance_portfolio, two_asset_frontier_point,
+    two_asset_min_variance_weight,
 };
 pub use portfolio::{
-    marginal_risk, portfolio_return, portfolio_variance, portfolio_volatility, sharpe_ratio,
-    Allocator, Portfolio, PortfolioStats,
+    Allocator, Portfolio, PortfolioStats, marginal_risk, portfolio_return, portfolio_variance,
+    portfolio_volatility, sharpe_ratio,
 };
-pub use risk::{historical_cvar, historical_var, RiskModel};
-pub use tangency::{capital_market_line, tangency_portfolio, two_fund_separation, TangencyResult};
+pub use risk::{RiskModel, historical_cvar, historical_var};
+pub use tangency::{TangencyResult, capital_market_line, tangency_portfolio, two_fund_separation};

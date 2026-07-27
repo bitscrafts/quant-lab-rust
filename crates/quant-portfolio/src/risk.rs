@@ -79,7 +79,11 @@ pub fn historical_cvar(returns: &[f64], confidence: f64) -> Result<f64, Portfoli
     let quantile = empirical_quantile(returns, p);
     // Average of returns <= quantile (the left tail). CVaR is the negative of
     // this average (a positive loss magnitude).
-    let tail: Vec<f64> = returns.iter().filter(|r| **r <= quantile + 1e-12).copied().collect();
+    let tail: Vec<f64> = returns
+        .iter()
+        .filter(|r| **r <= quantile + 1e-12)
+        .copied()
+        .collect();
     if tail.is_empty() {
         // Fallback: should not happen with a non-empty return series.
         return Ok(-quantile);

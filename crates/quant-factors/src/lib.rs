@@ -40,6 +40,6 @@ pub mod risk;
 
 pub use eigen::{deflate, power_method, top_k_eigen};
 pub use error::FactorError;
-pub use fama_french::{ff3_regression, FF3Exposure};
-pub use pca::{pca, pca_reconstruct, pca_transform, PcaResult};
-pub use risk::{risk_attribution, RiskAttribution};
+pub use fama_french::{FF3Exposure, ff3_regression};
+pub use pca::{PcaResult, pca, pca_reconstruct, pca_transform};
+pub use risk::{RiskAttribution, risk_attribution};

@@ -8,9 +8,8 @@
 //! Run with: `cargo run -p quant-portfolio --example frontier`.
 
 use quant_portfolio::{
-    capital_market_line, efficient_frontier_point, min_variance_portfolio,
-    portfolio_return, portfolio_volatility, sharpe_ratio, tangency_portfolio,
-    two_asset_frontier_point,
+    capital_market_line, efficient_frontier_point, min_variance_portfolio, portfolio_return,
+    portfolio_volatility, sharpe_ratio, tangency_portfolio, two_asset_frontier_point,
 };
 
 fn main() {
@@ -55,9 +54,7 @@ fn main() {
     let w_gmv = min_variance_portfolio(&mu, &cov).unwrap();
     let mu_gmv = portfolio_return(&w_gmv, &mu);
     let sigma_gmv = portfolio_volatility(&w_gmv, &cov);
-    println!(
-        "Global minimum-variance portfolio (Sigma^-1 * 1 / (1' Sigma^-1 * 1)):"
-    );
+    println!("Global minimum-variance portfolio (Sigma^-1 * 1 / (1' Sigma^-1 * 1)):");
     println!("  weights = [{:.4}, {:.4}]", w_gmv[0], w_gmv[1]);
     println!("  mu      = {:.6}", mu_gmv);
     println!("  sigma   = {:.6}", sigma_gmv);
@@ -66,7 +63,10 @@ fn main() {
     // Tangency portfolio (closed form: Sigma^-1 (mu - rf 1) / 1' Sigma^-1 (mu - rf 1)).
     let tan = tangency_portfolio(&mu, &cov, rf).unwrap();
     println!("Tangency portfolio (maximum Sharpe):");
-    println!("  weights   = [{:.4}, {:.4}]", tan.weights[0], tan.weights[1]);
+    println!(
+        "  weights   = [{:.4}, {:.4}]",
+        tan.weights[0], tan.weights[1]
+    );
     println!("  mu_tan    = {:.6}", tan.expected_return);
     println!("  sigma_tan = {:.6}", tan.volatility);
     println!("  Sharpe    = {:.6}", tan.sharpe);

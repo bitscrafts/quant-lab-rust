@@ -6,7 +6,7 @@
 //!
 //! Run with: `cargo run -p quant-portfolio --example capm`.
 
-use quant_core::{XorShift64, Normal, Distribution};
+use quant_core::{Distribution, Normal, XorShift64};
 use quant_portfolio::{alpha, beta, sml};
 
 fn main() {
@@ -56,13 +56,19 @@ fn main() {
     println!("  alpha_hat = {:.6}", alpha_hat);
     println!();
     println!("Security market line: E[R_i] = rf + beta_i * (E[R_m] - rf)");
-    println!("  SML-predicted return at beta_hat = {:.6}", sml(beta_hat, mean_m, rf));
+    println!(
+        "  SML-predicted return at beta_hat = {:.6}",
+        sml(beta_hat, mean_m, rf)
+    );
     println!("  realised mean return              = {:.6}", mean_a);
     println!("  Jensen's alpha (gap)              = {:.6}", alpha_hat);
     println!();
 
     // Sweep beta along the SML.
-    println!("Security market line (E[R_m] = {:.6}, rf = {:.6}):", mean_m, rf);
+    println!(
+        "Security market line (E[R_m] = {:.6}, rf = {:.6}):",
+        mean_m, rf
+    );
     println!("  beta    SML_return");
     for i in 0..=10 {
         let b = i as f64 * 0.25;

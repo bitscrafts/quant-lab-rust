@@ -2,9 +2,9 @@
 
 use approx::assert_relative_eq;
 use quant_core::{
+    CoreError, Distribution, Moments, Normal, PriceSeries, Rng, RollingWindow, XorShift64,
     box_muller_normal, excess_kurtosis, gbm_paths, log_returns, mean, rolling, rolling_mean,
-    skewness, simple_returns, std_dev, variance, CoreError, Distribution, Moments, Normal,
-    PriceSeries, Rng, RollingWindow, XorShift64,
+    simple_returns, skewness, std_dev, variance,
 };
 
 // R6.2: PriceSeries newtype ----------------------------------------------------
@@ -104,10 +104,7 @@ fn test_gaussian_moments() {
     let draws: Vec<f64> = (0..10_000).map(|_| normal.sample(&mut rng)).collect();
     let sk = skewness(&draws).unwrap();
     let ku = excess_kurtosis(&draws).unwrap();
-    assert!(
-        sk.abs() < 0.1,
-        "skewness {sk} should be within 0.1 of 0"
-    );
+    assert!(sk.abs() < 0.1, "skewness {sk} should be within 0.1 of 0");
     assert!(
         ku.abs() < 0.2,
         "excess kurtosis {ku} should be within 0.2 of 0"

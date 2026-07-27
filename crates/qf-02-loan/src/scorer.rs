@@ -13,7 +13,7 @@ impl LinearScorer {
     pub fn new(weights: Vec<f64>, bias: f64) -> Self {
         Self { weights, bias }
     }
-    
+
     /// Predict class using threshold on probability.
     pub fn predict(&self, features: &[f64], threshold: f64) -> bool {
         self.predict_proba(features) > threshold
@@ -23,7 +23,9 @@ impl LinearScorer {
 impl Scorer for LinearScorer {
     /// Compute weighted sum: weights · features + bias
     fn score(&self, features: &[f64]) -> f64 {
-        let dot_product: f64 = self.weights.iter()
+        let dot_product: f64 = self
+            .weights
+            .iter()
             .zip(features.iter())
             .map(|(w, f)| w * f)
             .sum();
@@ -36,7 +38,7 @@ impl BinaryClassifier for LinearScorer {
     fn predict(&self, features: &[f64]) -> bool {
         self.predict_proba(features) > 0.5
     }
-    
+
     /// Predict probability using sigmoid function.
     fn predict_proba(&self, features: &[f64]) -> f64 {
         sigmoid(self.score(features))
@@ -51,7 +53,7 @@ fn sigmoid(x: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_sigmoid_properties() {
         assert!((sigmoid(0.0) - 0.5).abs() < 1e-10);

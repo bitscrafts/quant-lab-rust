@@ -30,7 +30,9 @@ pub mod series;
 pub mod sim;
 
 pub use error::CoreError;
-pub use moments::{excess_kurtosis, mean, skewness, std_dev, variance, Moments};
-pub use rolling::{rolling, rolling_mean, rolling_std_dev, RollingWindow};
-pub use series::{log_returns, series_log_returns, series_simple_returns, simple_returns, PriceSeries};
-pub use sim::{gbm_paths, box_muller_normal, Distribution, Normal, Rng, XorShift64};
+pub use moments::{Moments, excess_kurtosis, mean, skewness, std_dev, variance};
+pub use rolling::{RollingWindow, rolling, rolling_mean, rolling_std_dev};
+pub use series::{
+    PriceSeries, log_returns, series_log_returns, series_simple_returns, simple_returns,
+};
+pub use sim::{Distribution, Normal, Rng, XorShift64, box_muller_normal, gbm_paths};

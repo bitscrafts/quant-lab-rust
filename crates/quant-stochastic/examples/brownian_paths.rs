@@ -28,9 +28,18 @@ fn main() {
     println!("Standard Brownian motion W_t:");
     println!("  W_0   = {:.6}", w[0]);
     println!("  W_T   = {:.6}", w[n]);
-    println!("  min   = {:.6}", w.iter().cloned().fold(f64::INFINITY, f64::min));
-    println!("  max   = {:.6}", w.iter().cloned().fold(f64::NEG_INFINITY, f64::max));
-    println!("  quadratic variation = {:.6}  (should be ~ T = {t:.4})", qv);
+    println!(
+        "  min   = {:.6}",
+        w.iter().cloned().fold(f64::INFINITY, f64::min)
+    );
+    println!(
+        "  max   = {:.6}",
+        w.iter().cloned().fold(f64::NEG_INFINITY, f64::max)
+    );
+    println!(
+        "  quadratic variation = {:.6}  (should be ~ T = {t:.4})",
+        qv
+    );
     println!();
 
     // Quadratic variation over many paths: converges to T.
@@ -41,8 +50,10 @@ fn main() {
         let path = brownian_motion(steps, dt, &mut rng);
         let qv = quadratic_variation(&path);
         let t = steps as f64 * dt;
-        println!("  n={steps:>7}  QV={qv:.4}  T={t:.4}  rel err={:.3}%",
-            (qv - t).abs() / t * 100.0);
+        println!(
+            "  n={steps:>7}  QV={qv:.4}  T={t:.4}  rel err={:.3}%",
+            (qv - t).abs() / t * 100.0
+        );
     }
     println!();
 
@@ -56,8 +67,10 @@ fn main() {
     println!("  S_0 = {:.4}", p[0]);
     println!("  S_T = {:.4}", p[n]);
     println!("  log-return = {:.6}", (p[n] / s0).ln());
-    println!("  expected log-return = {:.6}  ((mu - 0.5*sigma^2)*T)",
-        (mu - 0.5 * sigma * sigma) * t);
+    println!(
+        "  expected log-return = {:.6}  ((mu - 0.5*sigma^2)*T)",
+        (mu - 0.5 * sigma * sigma) * t
+    );
     println!();
 
     // Terminal distribution of GBM over many paths.
@@ -74,8 +87,11 @@ fn main() {
     let median = terminals[n_paths / 2];
     let p5 = terminals[(n_paths as f64 * 0.05) as usize];
     let p95 = terminals[(n_paths as f64 * 0.95) as usize];
-    println!("  E[S_T] = {:.4}  (analytical: S0*exp(mu*T) = {:.4})",
-        mean, s0 * (mu * t).exp());
+    println!(
+        "  E[S_T] = {:.4}  (analytical: S0*exp(mu*T) = {:.4})",
+        mean,
+        s0 * (mu * t).exp()
+    );
     println!("  median = {:.4}", median);
     println!("  5th percentile  = {:.4}", p5);
     println!("  95th percentile  = {:.4}", p95);
@@ -84,8 +100,10 @@ fn main() {
     // Jump-diffusion.
     let mut rng = XorShift64::new(42);
     let jd = jump_diffusion(s0, mu, sigma, 3.0, 0.1, t, n, &mut rng);
-    println!("Merton jump-diffusion (jump_rate=3, jump_mean=0.1, J=exp(0.1)={:.4}):",
-        0.1_f64.exp());
+    println!(
+        "Merton jump-diffusion (jump_rate=3, jump_mean=0.1, J=exp(0.1)={:.4}):",
+        0.1_f64.exp()
+    );
     println!("  S_0 = {:.4}", jd[0]);
     println!("  S_T = {:.4}", jd[n]);
     println!();
@@ -93,7 +111,9 @@ fn main() {
     // Poisson counts.
     println!("Poisson process (rate=5, T=1, expected count=5):");
     let mut rng = XorShift64::new(42);
-    let counts: Vec<usize> = (0..5000).map(|_| poisson_count(5.0, 1.0, &mut rng)).collect();
+    let counts: Vec<usize> = (0..5000)
+        .map(|_| poisson_count(5.0, 1.0, &mut rng))
+        .collect();
     let mean_count: f64 = counts.iter().sum::<usize>() as f64 / counts.len() as f64;
     println!("  mean count over 5000 draws = {:.3}", mean_count);
     println!();

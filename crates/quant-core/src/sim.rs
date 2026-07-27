@@ -151,7 +151,11 @@ pub fn gbm_paths<R: Rng + ?Sized>(
     n_paths: usize,
     rng: &mut R,
 ) -> Vec<Vec<f64>> {
-    let dt = if n_steps == 0 { 0.0 } else { t / n_steps as f64 };
+    let dt = if n_steps == 0 {
+        0.0
+    } else {
+        t / n_steps as f64
+    };
     let drift = (mu - 0.5 * sigma * sigma) * dt;
     let diffusion = sigma * dt.sqrt();
     let normal = Normal::standard();

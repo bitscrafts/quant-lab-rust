@@ -7,16 +7,28 @@
 #![allow(clippy::useless_vec)]
 
 use quant_microstructure::{
-    execution_cost, linear_impact, order_flow_imbalance, sqrt_impact, trade_imbalance, vwap,
-    BookSnapshot, Fill, Level, MicroError, Order, OrderBook, Side, Trade,
+    BookSnapshot, Fill, Level, MicroError, Order, OrderBook, Side, Trade, execution_cost,
+    linear_impact, order_flow_imbalance, sqrt_impact, trade_imbalance, vwap,
 };
 
 fn bid(id: u64, price: u64, qty: u64, ts: u64) -> Order {
-    Order { id, side: Side::Bid, price, quantity: qty, timestamp: ts }
+    Order {
+        id,
+        side: Side::Bid,
+        price,
+        quantity: qty,
+        timestamp: ts,
+    }
 }
 
 fn ask(id: u64, price: u64, qty: u64, ts: u64) -> Order {
-    Order { id, side: Side::Ask, price, quantity: qty, timestamp: ts }
+    Order {
+        id,
+        side: Side::Ask,
+        price,
+        quantity: qty,
+        timestamp: ts,
+    }
 }
 
 // =========================================================================
@@ -147,18 +159,42 @@ fn t11_ofi_series_from_snapshots() {
     let snaps = vec![
         BookSnapshot {
             timestamp: 1,
-            best_bid: Some(Level { price: 100, quantity: 50, order_count: 1 }),
-            best_ask: Some(Level { price: 101, quantity: 30, order_count: 1 }),
+            best_bid: Some(Level {
+                price: 100,
+                quantity: 50,
+                order_count: 1,
+            }),
+            best_ask: Some(Level {
+                price: 101,
+                quantity: 30,
+                order_count: 1,
+            }),
         },
         BookSnapshot {
             timestamp: 2,
-            best_bid: Some(Level { price: 100, quantity: 60, order_count: 1 }),
-            best_ask: Some(Level { price: 101, quantity: 25, order_count: 1 }),
+            best_bid: Some(Level {
+                price: 100,
+                quantity: 60,
+                order_count: 1,
+            }),
+            best_ask: Some(Level {
+                price: 101,
+                quantity: 25,
+                order_count: 1,
+            }),
         },
         BookSnapshot {
             timestamp: 3,
-            best_bid: Some(Level { price: 100, quantity: 55, order_count: 1 }),
-            best_ask: Some(Level { price: 101, quantity: 35, order_count: 1 }),
+            best_bid: Some(Level {
+                price: 100,
+                quantity: 55,
+                order_count: 1,
+            }),
+            best_ask: Some(Level {
+                price: 101,
+                quantity: 35,
+                order_count: 1,
+            }),
         },
     ];
     let ofi = order_flow_imbalance(&snaps);
@@ -172,9 +208,21 @@ fn t11_ofi_series_from_snapshots() {
 #[test]
 fn t12_vwap_weighted_average_price() {
     let fills = vec![
-        Fill { price: 100, quantity: 10, maker_order_id: 1 },
-        Fill { price: 102, quantity: 20, maker_order_id: 2 },
-        Fill { price: 105, quantity: 30, maker_order_id: 3 },
+        Fill {
+            price: 100,
+            quantity: 10,
+            maker_order_id: 1,
+        },
+        Fill {
+            price: 102,
+            quantity: 20,
+            maker_order_id: 2,
+        },
+        Fill {
+            price: 105,
+            quantity: 30,
+            maker_order_id: 3,
+        },
     ];
     // VWAP = (100*10 + 102*20 + 105*30) / 60 = (1000+2040+3150)/60 = 6190/60
     let expected = 6190.0 / 60.0;
@@ -184,8 +232,18 @@ fn t12_vwap_weighted_average_price() {
 #[test]
 fn t13_trade_imbalance_bounds() {
     let trades = vec![
-        Trade { price: 100, quantity: 30, side: Side::Bid, timestamp: 1 },
-        Trade { price: 101, quantity: 10, side: Side::Ask, timestamp: 2 },
+        Trade {
+            price: 100,
+            quantity: 30,
+            side: Side::Bid,
+            timestamp: 1,
+        },
+        Trade {
+            price: 101,
+            quantity: 10,
+            side: Side::Ask,
+            timestamp: 2,
+        },
     ];
     let ti = trade_imbalance(&trades);
     // (30 - 10) / 40 = 0.5

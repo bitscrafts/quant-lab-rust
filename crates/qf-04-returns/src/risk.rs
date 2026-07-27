@@ -76,11 +76,7 @@ pub fn sortino_ratio(returns: &[f64], risk_free_rate: f64) -> f64 {
         .iter()
         .map(|&r| {
             let short = risk_free_rate - r;
-            if short > 0.0 {
-                short * short
-            } else {
-                0.0
-            }
+            if short > 0.0 { short * short } else { 0.0 }
         })
         .sum();
     if downside_sq == 0.0 {

@@ -8,7 +8,7 @@
 //!    preserved memory (high ACF at lag 1).
 
 use quant_core::{Distribution, Normal, XorShift64};
-use quant_timeseries::{acf, adf_test, frac_diff, MACKINNON_5PCT};
+use quant_timeseries::{MACKINNON_5PCT, acf, adf_test, frac_diff};
 
 fn main() {
     let mut rng = XorShift64::new(42);
@@ -34,7 +34,10 @@ fn main() {
     println!("Random Walk ({} steps):", n);
     println!("  ADF statistic: {:.4}", r_rw.statistic);
     println!("  Critical (5%):  {:.2}", MACKINNON_5PCT);
-    println!("  Stationary:     {}", if r_rw.is_stationary { "YES" } else { "NO" });
+    println!(
+        "  Stationary:     {}",
+        if r_rw.is_stationary { "YES" } else { "NO" }
+    );
     println!();
 
     // First difference (d = 1).
@@ -43,7 +46,10 @@ fn main() {
     let acf_d1 = acf(&diff1, 5).unwrap();
     println!("First Difference (d=1):");
     println!("  ADF statistic: {:.4}", r_d1.statistic);
-    println!("  Stationary:     {}", if r_d1.is_stationary { "YES" } else { "NO" });
+    println!(
+        "  Stationary:     {}",
+        if r_d1.is_stationary { "YES" } else { "NO" }
+    );
     println!("  ACF(1):         {:.4} (memory destroyed)", acf_d1[1]);
     println!();
 
@@ -53,7 +59,10 @@ fn main() {
     let acf_d04 = acf(&diff04, 5).unwrap();
     println!("Fractional Diff (d=0.4):");
     println!("  ADF statistic: {:.4}", r_d04.statistic);
-    println!("  Stationary:     {}", if r_d04.is_stationary { "YES" } else { "NO" });
+    println!(
+        "  Stationary:     {}",
+        if r_d04.is_stationary { "YES" } else { "NO" }
+    );
     println!("  ACF(1):         {:.4} (memory preserved)", acf_d04[1]);
     println!();
     println!("==============================");

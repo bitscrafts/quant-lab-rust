@@ -4,23 +4,23 @@
 
 use approx::assert_relative_eq;
 use qf_02_loan::{
-    HomeOwnership, LoanApplication, FeatureExtractor, OneHotEncoder, Normalizer,
-    LinearScorer, roc_curve, auc, BinaryClassifier, Scorer,
+    BinaryClassifier, FeatureExtractor, HomeOwnership, LinearScorer, LoanApplication, Normalizer,
+    OneHotEncoder, Scorer, auc, roc_curve,
 };
 
 // Test 1: LoanApplication creation
 #[test]
 fn test_loan_application_creation() {
     let loan = LoanApplication::new(
-        50000.0,  // income
-        20000.0,  // loan_amount
-        5.5,      // interest_rate
-        0.3,      // dti
-        2,        // grade (B)
+        50000.0, // income
+        20000.0, // loan_amount
+        5.5,     // interest_rate
+        0.3,     // dti
+        2,       // grade (B)
         HomeOwnership::Rent,
-        false,    // defaulted
+        false, // defaulted
     );
-    
+
     assert_eq!(loan.income, 50000.0);
     assert_eq!(loan.loan_amount, 20000.0);
     assert_eq!(loan.interest_rate, 5.5);
@@ -47,14 +47,14 @@ fn test_loan_to_income_ratio() {
 // Test 4: grade A to score
 #[test]
 fn test_grade_to_score() {
-    let score = FeatureExtractor::grade_to_score(1);  // A
+    let score = FeatureExtractor::grade_to_score(1); // A
     assert_relative_eq!(score, 0.0, epsilon = 1e-10);
 }
 
 // Test 5: grade G to score
 #[test]
 fn test_grade_to_score_g() {
-    let score = FeatureExtractor::grade_to_score(7);  // G
+    let score = FeatureExtractor::grade_to_score(7); // G
     assert_relative_eq!(score, 1.0, epsilon = 1e-10);
 }
 
@@ -77,7 +77,7 @@ fn test_one_hot_encoder_own() {
 fn test_normalizer_minmax() {
     let data = vec![10.0, 20.0, 30.0];
     let normalizer = Normalizer::fit(&data);
-    
+
     assert_relative_eq!(normalizer.transform(10.0), 0.0, epsilon = 1e-10);
     assert_relative_eq!(normalizer.transform(20.0), 0.5, epsilon = 1e-10);
     assert_relative_eq!(normalizer.transform(30.0), 1.0, epsilon = 1e-10);
@@ -88,7 +88,7 @@ fn test_normalizer_minmax() {
 fn test_normalizer_constant() {
     let data = vec![5.0, 5.0, 5.0];
     let normalizer = Normalizer::fit(&data);
-    
+
     // All should map to 0.0 (avoid division by zero)
     assert_relative_eq!(normalizer.transform(5.0), 0.0, epsilon = 1e-10);
 }
@@ -130,7 +130,7 @@ fn test_sigmoid_large_negative() {
 #[test]
 fn test_predict_proba() {
     let scorer = LinearScorer::new(vec![0.0], 0.0);
-    let proba = scorer.predict_proba(&[100.0]);  // score will be 0
+    let proba = scorer.predict_proba(&[100.0]); // score will be 0
     assert_relative_eq!(proba, 0.5, epsilon = 1e-10);
 }
 
@@ -140,10 +140,10 @@ fn test_roc_curve_perfect() {
     // Perfect: all positives scored higher than negatives
     let scores = vec![0.9, 0.8, 0.7, 0.3, 0.2, 0.1];
     let labels = vec![true, true, true, false, false, false];
-    
+
     let points = roc_curve(&scores, &labels);
     let auc_val = auc(&points);
-    
+
     assert_relative_eq!(auc_val, 1.0, epsilon = 1e-10);
 }
 
@@ -153,10 +153,10 @@ fn test_roc_curve_random() {
     // Random: interleaved positives and negatives
     let scores = vec![0.9, 0.7, 0.5, 0.3, 0.1];
     let labels = vec![true, false, true, false, true];
-    
+
     let points = roc_curve(&scores, &labels);
     let auc_val = auc(&points);
-    
+
     // Should be approximately 0.5 for random
     // With 3 pos and 2 neg, exact AUC depends on ordering
     assert!(auc_val > 0.3 && auc_val < 0.7);

@@ -13,10 +13,10 @@ use qf_common::Transaction;
 pub struct ZScoreDetector {
     /// Z-score threshold for anomaly detection (typically 3.0).
     threshold: f64,
-    
+
     /// Mean value for each feature.
     feature_means: Vec<f64>,
-    
+
     /// Standard deviation for each feature.
     feature_stds: Vec<f64>,
 }
@@ -42,7 +42,7 @@ impl ZScoreDetector {
             feature_stds: Vec::new(),
         }
     }
-    
+
     /// Fit the detector on a set of transactions.
     ///
     /// Computes mean and standard deviation for each feature across all transactions.
@@ -58,13 +58,13 @@ impl ZScoreDetector {
         if transactions.is_empty() {
             return;
         }
-        
+
         let num_features = transactions[0].features.len();
-        
+
         // Initialize means and stds
         self.feature_means = vec![0.0; num_features];
         self.feature_stds = vec![0.0; num_features];
-        
+
         // Compute mean for each feature
         for tx in transactions {
             assert_eq!(
@@ -72,16 +72,16 @@ impl ZScoreDetector {
                 num_features,
                 "All transactions must have the same number of features"
             );
-            
+
             for (i, &value) in tx.features.iter().enumerate() {
                 self.feature_means[i] += value;
             }
         }
-        
+
         for mean in &mut self.feature_means {
             *mean /= transactions.len() as f64;
         }
-        
+
         // Compute standard deviation for each feature
         for tx in transactions {
             for (i, &value) in tx.features.iter().enumerate() {
@@ -89,12 +89,12 @@ impl ZScoreDetector {
                 self.feature_stds[i] += diff * diff;
             }
         }
-        
+
         for std in &mut self.feature_stds {
             *std = (*std / transactions.len() as f64).sqrt();
         }
     }
-    
+
     /// Predict whether a transaction is fraudulent.
     ///
     /// Returns true if any feature's z-score exceeds the threshold.
@@ -120,23 +120,23 @@ impl ZScoreDetector {
             self.feature_means.len(),
             "Transaction feature count must match training data"
         );
-        
+
         for (i, &value) in transaction.features.iter().enumerate() {
             let mean = self.feature_means[i];
             let std = self.feature_stds[i];
-            
+
             // Avoid division by zero
             if std == 0.0 {
                 continue;
             }
-            
+
             let z_score = (value - mean).abs() / std;
-            
+
             if z_score > self.threshold {
                 return true;
             }
         }
-        
+
         false
     }
 }
@@ -148,13 +148,13 @@ impl ZScoreDetector {
 pub struct ConfusionMatrix {
     /// True positives: correctly predicted fraud.
     pub tp: usize,
-    
+
     /// False positives: normal transactions predicted as fraud.
     pub fp: usize,
-    
+
     /// True negatives: correctly predicted normal.
     pub tn: usize,
-    
+
     /// False negatives: fraud transactions predicted as normal.
     pub fn_: usize,
 }
@@ -172,7 +172,7 @@ impl ConfusionMatrix {
         }
         self.tp as f64 / denominator as f64
     }
-    
+
     /// Compute recall (true positive rate, sensitivity).
     ///
     /// Recall = TP / (TP + FN)
@@ -185,7 +185,7 @@ impl ConfusionMatrix {
         }
         self.tp as f64 / denominator as f64
     }
-    
+
     /// Compute F1 score (harmonic mean of precision and recall).
     ///
     /// F1 = 2 * (precision * recall) / (precision + recall)
@@ -195,11 +195,11 @@ impl ConfusionMatrix {
         let precision = self.precision();
         let recall = self.recall();
         let denominator = precision + recall;
-        
+
         if denominator == 0.0 {
             return 0.0;
         }
-        
+
         2.0 * (precision * recall) / denominator
     }
 }
@@ -221,11 +221,11 @@ pub fn evaluate(detector: &ZScoreDetector, transactions: &[Transaction]) -> Conf
     let mut fp = 0;
     let mut tn = 0;
     let mut fn_ = 0;
-    
+
     for tx in transactions {
         let predicted = detector.predict(tx);
         let actual = tx.class == 1;
-        
+
         match (predicted, actual) {
             (true, true) => tp += 1,
             (true, false) => fp += 1,
@@ -233,20 +233,20 @@ pub fn evaluate(detector: &ZScoreDetector, transactions: &[Transaction]) -> Conf
             (false, true) => fn_ += 1,
         }
     }
-    
+
     ConfusionMatrix { tp, fp, tn, fn_ }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_detector_creation() {
         let detector = ZScoreDetector::new(3.0);
         assert_eq!(detector.threshold, 3.0);
     }
-    
+
     #[test]
     fn test_confusion_matrix_creation() {
         let cm = ConfusionMatrix {

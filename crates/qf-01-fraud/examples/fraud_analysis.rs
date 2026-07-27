@@ -6,7 +6,7 @@
 //! Run from quant-lab directory:
 //!   cargo run -p qf-01-fraud --example fraud_analysis
 
-use qf_01_fraud::{evaluate, ZScoreDetector};
+use qf_01_fraud::{ZScoreDetector, evaluate};
 use qf_common::load_transactions;
 
 fn main() {

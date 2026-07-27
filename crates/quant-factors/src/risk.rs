@@ -73,7 +73,11 @@ pub fn risk_attribution(
         return Err(FactorError::DimensionMismatch(format!(
             "factor_covariance is {}x{} but expected {k}x{k}",
             factor_covariance.len(),
-            if factor_covariance.is_empty() { 0 } else { factor_covariance[0].len() }
+            if factor_covariance.is_empty() {
+                0
+            } else {
+                factor_covariance[0].len()
+            }
         )));
     }
     for (i, row) in factor_covariance.iter().enumerate() {
@@ -134,7 +138,10 @@ mod tests {
         let factor_cov = vec![vec![0.04, 0.0], vec![0.0, 0.01]];
         let resid = vec![0.002, 0.001];
         let ra = risk_attribution(&weights, &loadings, &factor_cov, &resid).unwrap();
-        assert!((ra.total_variance - (ra.systematic_variance + ra.idiosyncratic_variance)).abs() < 1e-12);
+        assert!(
+            (ra.total_variance - (ra.systematic_variance + ra.idiosyncratic_variance)).abs()
+                < 1e-12
+        );
     }
 
     #[test]
@@ -148,8 +155,11 @@ mod tests {
         let sum_contrib: f64 = ra.factor_contributions.iter().sum();
         // f_p = [0.5, 0.5], Sigma_F diag = [0.04, 0.09]
         // systematic = 0.5^2*0.04 + 0.5^2*0.09 = 0.01 + 0.0225 = 0.0325
-        assert!((sum_contrib - ra.systematic_variance).abs() < 1e-12,
-            "sum_contrib={sum_contrib} systematic={}", ra.systematic_variance);
+        assert!(
+            (sum_contrib - ra.systematic_variance).abs() < 1e-12,
+            "sum_contrib={sum_contrib} systematic={}",
+            ra.systematic_variance
+        );
         assert!((ra.systematic_variance - 0.0325).abs() < 1e-12);
     }
 }

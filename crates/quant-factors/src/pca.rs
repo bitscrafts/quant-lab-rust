@@ -119,7 +119,11 @@ pub fn pca(returns: &[Vec<f64>], n_components: usize) -> Result<PcaResult, Facto
 ///
 /// Each row of the output is `x_t - mean` dotted with each eigenvector.
 /// The result has `returns.len()` rows and `eigenvectors.len()` columns.
-pub fn pca_transform(returns: &[Vec<f64>], eigenvectors: &[Vec<f64>], mean: &[f64]) -> Vec<Vec<f64>> {
+pub fn pca_transform(
+    returns: &[Vec<f64>],
+    eigenvectors: &[Vec<f64>],
+    mean: &[f64],
+) -> Vec<Vec<f64>> {
     returns
         .iter()
         .map(|row| {
@@ -219,17 +223,16 @@ mod tests {
             .zip(recon2.iter())
             .flat_map(|(o, r)| o.iter().zip(r.iter()).map(|(a, b)| (a - b).powi(2)))
             .sum();
-        assert!(err1 > err2, "1-component error {err1} should exceed 2-component error {err2}");
+        assert!(
+            err1 > err2,
+            "1-component error {err1} should exceed 2-component error {err2}"
+        );
         assert!(err2 > 1e-9, "2-component error should be nonzero");
     }
 
     #[test]
     fn test_pca_mean_centered() {
-        let returns = vec![
-            vec![1.0, 2.0],
-            vec![3.0, 4.0],
-            vec![5.0, 6.0],
-        ];
+        let returns = vec![vec![1.0, 2.0], vec![3.0, 4.0], vec![5.0, 6.0]];
         let res = pca(&returns, 2).unwrap();
         assert!((res.mean[0] - 3.0).abs() < 1e-12);
         assert!((res.mean[1] - 4.0).abs() < 1e-12);

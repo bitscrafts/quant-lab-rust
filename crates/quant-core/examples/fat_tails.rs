@@ -8,7 +8,7 @@
 //! Run from the `quant-lab` directory:
 //!   cargo run -p quant-core --example fat_tails
 
-use quant_core::{excess_kurtosis, gbm_paths, skewness, Distribution, Normal, XorShift64};
+use quant_core::{Distribution, Normal, XorShift64, excess_kurtosis, gbm_paths, skewness};
 
 fn report(label: &str, draws: &[f64]) {
     let sk = skewness(draws).unwrap();

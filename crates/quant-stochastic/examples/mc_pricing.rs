@@ -31,7 +31,10 @@ fn main() {
 
     // Convergence table: MC call price vs N.
     println!("Convergence (plain MC, European call):");
-    println!("  {:>10}  {:>12}  {:>12}  {:>12}", "N", "MC price", "BS price", "SE");
+    println!(
+        "  {:>10}  {:>12}  {:>12}  {:>12}",
+        "N", "MC price", "BS price", "SE"
+    );
     let mut rng = XorShift64::new(42);
     for &n in &[100usize, 1000, 10000, 100000] {
         let mc = mc_call(s0, k, r, sigma, t, n, &mut rng).unwrap();
@@ -45,12 +48,26 @@ fn main() {
     // Standard error scaling: SE ~ 1/sqrt(N).
     println!("Standard error scaling (SE ~ 1/sqrt(N)):");
     let mut rng = XorShift64::new(42);
-    let se_10k = mc_call(s0, k, r, sigma, t, 10000, &mut rng).unwrap().std_error;
-    let se_40k = mc_call(s0, k, r, sigma, t, 40000, &mut rng).unwrap().std_error;
-    let se_160k = mc_call(s0, k, r, sigma, t, 160000, &mut rng).unwrap().std_error;
+    let se_10k = mc_call(s0, k, r, sigma, t, 10000, &mut rng)
+        .unwrap()
+        .std_error;
+    let se_40k = mc_call(s0, k, r, sigma, t, 40000, &mut rng)
+        .unwrap()
+        .std_error;
+    let se_160k = mc_call(s0, k, r, sigma, t, 160000, &mut rng)
+        .unwrap()
+        .std_error;
     println!("  N=10000   SE = {:.6}", se_10k);
-    println!("  N=40000   SE = {:.6}  (ratio {:.2}x)", se_40k, se_10k / se_40k);
-    println!("  N=160000  SE = {:.6}  (ratio {:.2}x)", se_160k, se_10k / se_160k);
+    println!(
+        "  N=40000   SE = {:.6}  (ratio {:.2}x)",
+        se_40k,
+        se_10k / se_40k
+    );
+    println!(
+        "  N=160000  SE = {:.6}  (ratio {:.2}x)",
+        se_160k,
+        se_10k / se_160k
+    );
     println!("  Expected: 4x paths -> 2x smaller SE; 16x paths -> 4x smaller SE");
     println!();
 
@@ -61,9 +78,18 @@ fn main() {
     let n_draws = 50000;
     let plain = mc_call(s0, k, r, sigma, t, n_draws, &mut rng_plain).unwrap();
     let anti = mc_call_antithetic(s0, k, r, sigma, t, n_draws, &mut rng_anti).unwrap();
-    println!("  Plain MC:       price={:.6}, SE={:.6}, payoffs={}", plain.price, plain.std_error, plain.n_paths);
-    println!("  Antithetic MC:   price={:.6}, SE={:.6}, payoffs={}", anti.price, anti.std_error, anti.n_paths);
-    println!("  SE reduction:    {:.1}%", (1.0 - anti.std_error / plain.std_error) * 100.0);
+    println!(
+        "  Plain MC:       price={:.6}, SE={:.6}, payoffs={}",
+        plain.price, plain.std_error, plain.n_paths
+    );
+    println!(
+        "  Antithetic MC:   price={:.6}, SE={:.6}, payoffs={}",
+        anti.price, anti.std_error, anti.n_paths
+    );
+    println!(
+        "  SE reduction:    {:.1}%",
+        (1.0 - anti.std_error / plain.std_error) * 100.0
+    );
     println!();
 
     // Put-call parity check.

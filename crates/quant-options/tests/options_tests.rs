@@ -2,8 +2,8 @@
 
 use approx::assert_abs_diff_eq;
 use quant_options::{
-    bs_call, bs_put, delta, delta_fd, gamma, gamma_fd, implied_vol, normal_pdf, rho, theta,
-    vega, vega_fd,
+    bs_call, bs_put, delta, delta_fd, gamma, gamma_fd, implied_vol, normal_pdf, rho, theta, vega,
+    vega_fd,
 };
 
 const S0: f64 = 100.0;
@@ -88,7 +88,11 @@ fn test_delta_fd_matches_analytical() {
     let h = 1e-4;
     let d_ana = delta(S0, K, R, SIGMA, T, true);
     let d_fd = delta_fd(S0, K, R, SIGMA, T, true, h);
-    assert!((d_ana - d_fd).abs() < 1e-4, "|delta - delta_fd| = {}", (d_ana - d_fd).abs());
+    assert!(
+        (d_ana - d_fd).abs() < 1e-4,
+        "|delta - delta_fd| = {}",
+        (d_ana - d_fd).abs()
+    );
 }
 
 #[test]
@@ -96,7 +100,11 @@ fn test_gamma_fd_matches_analytical() {
     let h = 1e-3;
     let g_ana = gamma(S0, K, R, SIGMA, T);
     let g_fd = gamma_fd(S0, K, R, SIGMA, T, h);
-    assert!((g_ana - g_fd).abs() < 1e-3, "|gamma - gamma_fd| = {}", (g_ana - g_fd).abs());
+    assert!(
+        (g_ana - g_fd).abs() < 1e-3,
+        "|gamma - gamma_fd| = {}",
+        (g_ana - g_fd).abs()
+    );
 }
 
 #[test]
@@ -104,7 +112,11 @@ fn test_vega_fd_matches_analytical() {
     let h = 1e-4;
     let v_ana = vega(S0, K, R, SIGMA, T);
     let v_fd = vega_fd(S0, K, R, SIGMA, T, h);
-    assert!((v_ana - v_fd).abs() < 1e-3, "|vega - vega_fd| = {}", (v_ana - v_fd).abs());
+    assert!(
+        (v_ana - v_fd).abs() < 1e-3,
+        "|vega - vega_fd| = {}",
+        (v_ana - v_fd).abs()
+    );
 }
 
 #[test]

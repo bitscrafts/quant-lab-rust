@@ -46,11 +46,7 @@ pub fn normal_pdf(x: f64) -> f64 {
 pub fn delta(s0: f64, k: f64, r: f64, sigma: f64, t: f64, is_call: bool) -> f64 {
     let d1_val = d1(s0, k, r, sigma, t);
     let n_d1 = normal_cdf(d1_val);
-    if is_call {
-        n_d1
-    } else {
-        n_d1 - 1.0
-    }
+    if is_call { n_d1 } else { n_d1 - 1.0 }
 }
 
 /// Gamma: the second derivative of the option price with respect to spot.

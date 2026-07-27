@@ -169,10 +169,7 @@ pub fn efficient_frontier_point(
 /// Solve `A x = b` using the local Gaussian elimination (re-exported for
 /// module-internal callers and tests that want the same solver).
 #[allow(dead_code)]
-pub(crate) fn solve_system(
-    a: &mut [Vec<f64>],
-    b: &mut [f64],
-) -> Result<Vec<f64>, PortfolioError> {
+pub(crate) fn solve_system(a: &mut [Vec<f64>], b: &mut [f64]) -> Result<Vec<f64>, PortfolioError> {
     solve(a, b)
 }
 

@@ -124,10 +124,7 @@ pub fn implied_vol(
             f64::NAN
         };
 
-        let next = if newton_step.is_finite()
-            && newton_step > lo
-            && newton_step < hi
-        {
+        let next = if newton_step.is_finite() && newton_step > lo && newton_step < hi {
             newton_step
         } else {
             0.5 * (lo + hi)
@@ -149,21 +146,21 @@ pub fn implied_vol(
     })
 }
 
-fn validate_inputs(
-    market_price: f64,
-    s0: f64,
-    k: f64,
-    r: f64,
-    t: f64,
-) -> Result<(), OptionsError> {
+fn validate_inputs(market_price: f64, s0: f64, k: f64, r: f64, t: f64) -> Result<(), OptionsError> {
     if s0 <= 0.0 {
-        return Err(OptionsError::InvalidParam(format!("s0 must be positive, got {s0}")));
+        return Err(OptionsError::InvalidParam(format!(
+            "s0 must be positive, got {s0}"
+        )));
     }
     if k <= 0.0 {
-        return Err(OptionsError::InvalidParam(format!("k must be positive, got {k}")));
+        return Err(OptionsError::InvalidParam(format!(
+            "k must be positive, got {k}"
+        )));
     }
     if t <= 0.0 {
-        return Err(OptionsError::InvalidParam(format!("t must be positive, got {t}")));
+        return Err(OptionsError::InvalidParam(format!(
+            "t must be positive, got {t}"
+        )));
     }
     if !market_price.is_finite() || market_price < 0.0 {
         return Err(OptionsError::InvalidParam(format!(
@@ -171,7 +168,9 @@ fn validate_inputs(
         )));
     }
     if !r.is_finite() {
-        return Err(OptionsError::InvalidParam(format!("r must be finite, got {r}")));
+        return Err(OptionsError::InvalidParam(format!(
+            "r must be finite, got {r}"
+        )));
     }
     Ok(())
 }

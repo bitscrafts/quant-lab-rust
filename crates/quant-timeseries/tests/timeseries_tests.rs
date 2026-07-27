@@ -1,9 +1,9 @@
 //! Integration tests for the quant-timeseries crate (TDD contract: 17 tests).
 
 use approx::assert_relative_eq;
-use quant_core::{gbm_paths, Distribution, Normal, XorShift64};
+use quant_core::{Distribution, Normal, XorShift64, gbm_paths};
 use quant_timeseries::{
-    acf, adf_test, find_min_d, frac_diff, ffd_weights, ols, MACKINNON_5PCT, TimeSeriesError,
+    MACKINNON_5PCT, TimeSeriesError, acf, adf_test, ffd_weights, find_min_d, frac_diff, ols,
 };
 
 // R7.2: OLS regression --------------------------------------------------------
@@ -13,9 +13,7 @@ fn test_ols_simple_regression() {
     // y = 3 + 2x for x = 0, 1, 2, 3, 4 -> y = 3, 5, 7, 9, 11 (perfect).
     // Add tiny noise to test approximate recovery; here we keep it perfect to
     // also validate exact recovery, and the contract says "coeffs ≈ [3, 2]".
-    let x: Vec<Vec<f64>> = (0..5)
-        .map(|t| vec![1.0, t as f64])
-        .collect();
+    let x: Vec<Vec<f64>> = (0..5).map(|t| vec![1.0, t as f64]).collect();
     let y: Vec<f64> = (0..5).map(|t| 3.0 + 2.0 * t as f64).collect();
     let fit = ols(&x, &y).unwrap();
     assert_eq!(fit.coeffs.len(), 2);
@@ -53,7 +51,11 @@ fn test_ols_multiple_regression() {
 #[test]
 fn test_ols_singular_matrix() {
     // Two identical columns -> X'X is singular.
-    let x: Vec<Vec<f64>> = vec![vec![1.0, 2.0, 2.0], vec![1.0, 3.0, 3.0], vec![1.0, 4.0, 4.0]];
+    let x: Vec<Vec<f64>> = vec![
+        vec![1.0, 2.0, 2.0],
+        vec![1.0, 3.0, 3.0],
+        vec![1.0, 4.0, 4.0],
+    ];
     let y: Vec<f64> = vec![1.0, 2.0, 3.0];
     let err = ols(&x, &y).unwrap_err();
     assert!(matches!(err, TimeSeriesError::Singular), "got {err:?}");
@@ -146,8 +148,7 @@ fn test_adf_random_walk() {
     assert!(
         !r.is_stationary,
         "random walk should NOT be stationary (stat={}, crit={})",
-        r.statistic,
-        r.critical_value
+        r.statistic, r.critical_value
     );
 }
 

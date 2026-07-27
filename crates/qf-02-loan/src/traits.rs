@@ -7,7 +7,7 @@
 pub trait BinaryClassifier {
     /// Predict class (true/false) for given features.
     fn predict(&self, features: &[f64]) -> bool;
-    
+
     /// Predict probability of positive class (0.0 to 1.0).
     fn predict_proba(&self, features: &[f64]) -> f64;
 }

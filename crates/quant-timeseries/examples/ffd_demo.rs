@@ -8,7 +8,7 @@
 //! 4. Display the FFD weight window and how it decays.
 
 use quant_core::{Distribution, Normal, XorShift64};
-use quant_timeseries::{acf, find_min_d, frac_diff, ffd_weights};
+use quant_timeseries::{acf, ffd_weights, find_min_d, frac_diff};
 
 fn main() {
     let mut rng = XorShift64::new(7);
@@ -45,14 +45,25 @@ fn main() {
     println!("Memory comparison (ACF at lag 5):");
     println!("  Original (d=0):    {:.4} (non-stationary)", acf_orig[5]);
     println!("  Full diff (d=1):   {:.4} (no memory)", acf_d1[5]);
-    println!("  Frac diff (d={:.2}): {:.4} (memory preserved)", d_min, acf_dmin[5]);
+    println!(
+        "  Frac diff (d={:.2}): {:.4} (memory preserved)",
+        d_min, acf_dmin[5]
+    );
     println!();
 
     // FFD weights for the minimum d.
     let weights = ffd_weights(d_min, 1e-4).unwrap();
-    let preview: Vec<String> = weights.iter().take(8).map(|w| format!("{:.4}", w)).collect();
+    let preview: Vec<String> = weights
+        .iter()
+        .take(8)
+        .map(|w| format!("{:.4}", w))
+        .collect();
     println!("FFD weights (d={:.2}, thresh=1e-4):", d_min);
-    println!("  [{}{}]", preview.join(", "), if weights.len() > 8 { ", ..." } else { "" });
+    println!(
+        "  [{}{}]",
+        preview.join(", "),
+        if weights.len() > 8 { ", ..." } else { "" }
+    );
     println!("  Window size: {}", weights.len());
     println!();
     println!("==============================");

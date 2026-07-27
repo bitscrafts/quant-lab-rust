@@ -8,13 +8,9 @@ pub struct FeatureExtractor;
 impl FeatureExtractor {
     /// Calculate debt-to-income ratio.
     pub fn debt_to_income(income: f64, debt: f64) -> f64 {
-        if income == 0.0 {
-            0.0
-        } else {
-            debt / income
-        }
+        if income == 0.0 { 0.0 } else { debt / income }
     }
-    
+
     /// Calculate loan-to-income ratio.
     pub fn loan_to_income(loan_amount: f64, income: f64) -> f64 {
         if income == 0.0 {
@@ -23,7 +19,7 @@ impl FeatureExtractor {
             loan_amount / income
         }
     }
-    
+
     /// Convert credit grade to risk score.
     ///
     /// Maps A (1) → 0.0 (lowest risk) to G (7) → 1.0 (highest risk).
@@ -66,13 +62,13 @@ impl Normalizer {
         if data.is_empty() {
             return Self { min: 0.0, max: 0.0 };
         }
-        
+
         let min = data.iter().copied().fold(f64::INFINITY, f64::min);
         let max = data.iter().copied().fold(f64::NEG_INFINITY, f64::max);
-        
+
         Self { min, max }
     }
-    
+
     /// Transform value to [0, 1] range using fitted min-max.
     ///
     /// Returns 0.0 if min == max (constant data).

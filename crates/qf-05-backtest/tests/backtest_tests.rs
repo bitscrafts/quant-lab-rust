@@ -3,8 +3,8 @@
 use approx::assert_relative_eq;
 use qf_03_stocks::Ohlcv;
 use qf_05_backtest::{
-    run_backtest, BacktestConfig, BacktestError, BuyAndHold, Position, Signal, SmaCrossover,
-    Strategy,
+    BacktestConfig, BacktestError, BuyAndHold, Position, Signal, SmaCrossover, Strategy,
+    run_backtest,
 };
 
 /// Helper: build a single OHLCV bar.
@@ -271,7 +271,9 @@ fn test_win_rate_calculation() {
     // Build three winning trades and two losing trades by crafting a strategy
     // that buys at low bars and sells at high bars.
     // Prices: 100, 110, 90, 100, 110, 90, 100, 110, 90, 100
-    let closes = [100.0, 110.0, 90.0, 100.0, 110.0, 90.0, 100.0, 110.0, 90.0, 100.0];
+    let closes = [
+        100.0, 110.0, 90.0, 100.0, 110.0, 90.0, 100.0, 110.0, 90.0, 100.0,
+    ];
     let data: Vec<Ohlcv> = closes
         .iter()
         .enumerate()
@@ -305,7 +307,11 @@ fn test_win_rate_calculation() {
     assert!(result.win_rate >= 0.0 && result.win_rate <= 1.0);
     // Wins = trades with pnl > 0; recount from the log.
     let wins = result.trades.iter().filter(|t| t.pnl > 0.0).count() as f64;
-    assert_relative_eq!(result.win_rate, wins / result.num_trades as f64, epsilon = 1e-9);
+    assert_relative_eq!(
+        result.win_rate,
+        wins / result.num_trades as f64,
+        epsilon = 1e-9
+    );
 }
 
 // R5.7: qf-04-returns integration ----------------------------------------------

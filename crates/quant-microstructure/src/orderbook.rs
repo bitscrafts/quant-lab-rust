@@ -47,7 +47,9 @@ impl OrderBook {
             )));
         }
         if order.quantity == 0 {
-            return Err(MicroError::InvalidOrder("quantity must be positive".to_string()));
+            return Err(MicroError::InvalidOrder(
+                "quantity must be positive".to_string(),
+            ));
         }
         if self.index.contains_key(&order.id) {
             return Err(MicroError::InvalidOrder(format!(
@@ -60,9 +62,7 @@ impl OrderBook {
             Side::Bid => &mut self.bids,
             Side::Ask => &mut self.asks,
         };
-        book.entry(order.price)
-            .or_insert_with(Vec::new)
-            .push(order);
+        book.entry(order.price).or_insert_with(Vec::new).push(order);
         Ok(())
     }
 
@@ -76,7 +76,9 @@ impl OrderBook {
             Side::Bid => &mut self.bids,
             Side::Ask => &mut self.asks,
         };
-        let orders = book.get_mut(&price).ok_or(MicroError::OrderNotFound(order_id))?;
+        let orders = book
+            .get_mut(&price)
+            .ok_or(MicroError::OrderNotFound(order_id))?;
         let pos = orders
             .iter()
             .position(|o| o.id == order_id)
@@ -136,26 +138,20 @@ impl OrderBook {
 
     /// Best bid level (highest bid price), or `None` if the book is empty.
     pub fn best_bid(&self) -> Option<Level> {
-        self.bids
-            .iter()
-            .next_back()
-            .map(|(&price, orders)| Level {
-                price,
-                quantity: orders.iter().map(|o| o.quantity).sum(),
-                order_count: orders.len(),
-            })
+        self.bids.iter().next_back().map(|(&price, orders)| Level {
+            price,
+            quantity: orders.iter().map(|o| o.quantity).sum(),
+            order_count: orders.len(),
+        })
     }
 
     /// Best ask level (lowest ask price), or `None` if the book is empty.
     pub fn best_ask(&self) -> Option<Level> {
-        self.asks
-            .iter()
-            .next()
-            .map(|(&price, orders)| Level {
-                price,
-                quantity: orders.iter().map(|o| o.quantity).sum(),
-                order_count: orders.len(),
-            })
+        self.asks.iter().next().map(|(&price, orders)| Level {
+            price,
+            quantity: orders.iter().map(|o| o.quantity).sum(),
+            order_count: orders.len(),
+        })
     }
 
     /// Mid price: (best_bid + best_ask) / 2 as `f64`.
@@ -229,11 +225,23 @@ mod tests {
     use super::*;
 
     fn bid(id: u64, price: u64, qty: u64, ts: u64) -> Order {
-        Order { id, side: Side::Bid, price, quantity: qty, timestamp: ts }
+        Order {
+            id,
+            side: Side::Bid,
+            price,
+            quantity: qty,
+            timestamp: ts,
+        }
     }
 
     fn ask(id: u64, price: u64, qty: u64, ts: u64) -> Order {
-        Order { id, side: Side::Ask, price, quantity: qty, timestamp: ts }
+        Order {
+            id,
+            side: Side::Ask,
+            price,
+            quantity: qty,
+            timestamp: ts,
+        }
     }
 
     #[test]

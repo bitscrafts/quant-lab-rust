@@ -12,9 +12,9 @@
 use approx::assert_relative_eq;
 use qf_03_stocks::Ohlcv;
 use qf_04_returns::{
-    annualized_sharpe, annualized_volatility, cumulative_returns, drawdown, drawdown_stats,
-    log_returns, max_drawdown, rolling_volatility, sharpe_ratio, simple_returns, sortino_ratio,
-    volatility, Returns,
+    Returns, annualized_sharpe, annualized_volatility, cumulative_returns, drawdown,
+    drawdown_stats, log_returns, max_drawdown, rolling_volatility, sharpe_ratio, simple_returns,
+    sortino_ratio, volatility,
 };
 
 // ---------------------------------------------------------------------------

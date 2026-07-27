@@ -91,8 +91,20 @@ mod tests {
 
     #[test]
     fn test_order_equality() {
-        let a = Order { id: 1, side: Side::Bid, price: 100, quantity: 10, timestamp: 1 };
-        let b = Order { id: 1, side: Side::Bid, price: 100, quantity: 10, timestamp: 1 };
+        let a = Order {
+            id: 1,
+            side: Side::Bid,
+            price: 100,
+            quantity: 10,
+            timestamp: 1,
+        };
+        let b = Order {
+            id: 1,
+            side: Side::Bid,
+            price: 100,
+            quantity: 10,
+            timestamp: 1,
+        };
         assert_eq!(a, b);
     }
 }

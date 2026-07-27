@@ -7,8 +7,8 @@
 //!   cargo run -p qf-04-returns --example returns_analysis
 
 use qf_04_returns::{
-    annualized_sharpe, annualized_volatility, drawdown_stats, log_returns, max_drawdown,
-    simple_returns, sortino_ratio, volatility, Returns,
+    Returns, annualized_sharpe, annualized_volatility, drawdown_stats, log_returns, max_drawdown,
+    simple_returns, sortino_ratio, volatility,
 };
 
 fn main() {

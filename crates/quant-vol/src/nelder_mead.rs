@@ -35,7 +35,12 @@ where
 {
     let n = x0.len();
     if n == 0 {
-        return OptResult { x: Vec::new(), f: f(&[]), iterations: 0, converged: true };
+        return OptResult {
+            x: Vec::new(),
+            f: f(&[]),
+            iterations: 0,
+            converged: true,
+        };
     }
 
     // Build the initial simplex: n+1 vertices.
@@ -61,7 +66,11 @@ where
 
         // Sort vertices by descending function value (best first).
         let mut idx: Vec<usize> = (0..=n).collect();
-        idx.sort_by(|&a, &b| values[b].partial_cmp(&values[a]).unwrap_or(std::cmp::Ordering::Equal));
+        idx.sort_by(|&a, &b| {
+            values[b]
+                .partial_cmp(&values[a])
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         simplex = idx.iter().map(|&i| simplex[i].clone()).collect();
         values = idx.iter().map(|&i| values[i]).collect();
 

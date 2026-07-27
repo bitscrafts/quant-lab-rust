@@ -40,5 +40,5 @@ pub mod poisson;
 pub use blackscholes::{bs_call, bs_put, d1, d2, normal_cdf};
 pub use brownian::{brownian_motion, gbm, quadratic_variation};
 pub use error::StochError;
-pub use montecarlo::{ci_half_width, mc_call, mc_call_antithetic, mc_put, McResult};
+pub use montecarlo::{McResult, ci_half_width, mc_call, mc_call_antithetic, mc_put};
 pub use poisson::{exponential_variate, jump_diffusion, poisson_count, poisson_process};

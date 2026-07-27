@@ -22,7 +22,7 @@ pub struct LoanApplication {
     pub loan_amount: f64,
     pub interest_rate: f64,
     pub dti: f64,  // debt-to-income ratio
-    pub grade: u8,  // A=1, B=2, ..., G=7
+    pub grade: u8, // A=1, B=2, ..., G=7
     pub home_ownership: HomeOwnership,
     pub defaulted: bool,
 }
@@ -58,12 +58,12 @@ pub fn load_loans(path: &Path) -> Result<Vec<LoanApplication>, CommonError> {
     if !path.exists() {
         return Err(CommonError::FileNotFound(path.display().to_string()));
     }
-    
+
     let mut reader = csv::Reader::from_path(path)
         .map_err(|e| CommonError::IoError(std::io::Error::other(e.to_string())))?;
-    
+
     // Skip rows that fail to parse (missing values, etc.)
     let loans = reader.deserialize().flatten().collect();
-    
+
     Ok(loans)
 }

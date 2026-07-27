@@ -25,16 +25,26 @@ fn main() {
     ];
 
     println!("=== PCA on 12 observations x 3 assets ===\n");
-    println!("Mean: {:?}", returns[0].iter().enumerate().map(|(j, _)| {
-        returns.iter().map(|r| r[j]).sum::<f64>() / returns.len() as f64
-    }).collect::<Vec<_>>());
+    println!(
+        "Mean: {:?}",
+        returns[0]
+            .iter()
+            .enumerate()
+            .map(|(j, _)| { returns.iter().map(|r| r[j]).sum::<f64>() / returns.len() as f64 })
+            .collect::<Vec<_>>()
+    );
 
     // Full PCA (all 3 components).
     let res_full = pca(&returns, 3).unwrap();
     println!("\nEigenvalues (descending):");
     for (i, &lam) in res_full.eigenvalues.iter().enumerate() {
-        println!("  PC{}: {:.8}  (EVR = {:.4}, cum = {:.4})",
-            i + 1, lam, res_full.explained_variance_ratio[i], res_full.cumulative_variance[i]);
+        println!(
+            "  PC{}: {:.8}  (EVR = {:.4}, cum = {:.4})",
+            i + 1,
+            lam,
+            res_full.explained_variance_ratio[i],
+            res_full.cumulative_variance[i]
+        );
     }
 
     // Top eigenvector.
@@ -53,10 +63,18 @@ fn main() {
             .sum();
         let total_var: f64 = returns
             .iter()
-            .flat_map(|r| r.iter().map(|x| (x - res.mean[r.iter().position(|_| true).unwrap_or(0)]).powi(2)))
+            .flat_map(|r| {
+                r.iter()
+                    .map(|x| (x - res.mean[r.iter().position(|_| true).unwrap_or(0)]).powi(2))
+            })
             .sum();
         let _ = total_var;
-        println!("  k={}: SSE = {:.2e}  (EV captured = {:.4})", k, sse, res.cumulative_variance.last().unwrap());
+        println!(
+            "  k={}: SSE = {:.2e}  (EV captured = {:.4})",
+            k,
+            sse,
+            res.cumulative_variance.last().unwrap()
+        );
     }
 
     // Show the factor scores (projections) for the first 3 observations.

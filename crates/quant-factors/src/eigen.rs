@@ -48,7 +48,11 @@ pub fn power_method(
             )));
         }
     }
-    let max_iter = if max_iter == 0 { DEFAULT_MAX_ITER } else { max_iter };
+    let max_iter = if max_iter == 0 {
+        DEFAULT_MAX_ITER
+    } else {
+        max_iter
+    };
     let tol = if tol <= 0.0 { DEFAULT_TOL } else { tol };
 
     // Initial guess: uniform vector (works for positive matrices; for
@@ -83,7 +87,13 @@ pub fn power_method(
         // Rayleigh quotient lambda = v' A v (use v_new for stability).
         let av = matvec_sym(matrix, &v_new);
         let lambda: f64 = v_new.iter().zip(av.iter()).map(|(a, b)| a * b).sum();
-        let delta = l2_norm(&v_new.iter().zip(v.iter()).map(|(a, b)| a - b).collect::<Vec<_>>());
+        let delta = l2_norm(
+            &v_new
+                .iter()
+                .zip(v.iter())
+                .map(|(a, b)| a - b)
+                .collect::<Vec<_>>(),
+        );
         last_delta = delta;
         v = v_new;
         if (lambda - lambda_prev).abs() < tol && delta < tol * 10.0 {
@@ -184,7 +194,9 @@ mod tests {
     #[test]
     fn test_power_method_identity() {
         let n = 3;
-        let a: Vec<Vec<f64>> = (0..n).map(|i| (0..n).map(|j| if i == j { 1.0 } else { 0.0 }).collect()).collect();
+        let a: Vec<Vec<f64>> = (0..n)
+            .map(|i| (0..n).map(|j| if i == j { 1.0 } else { 0.0 }).collect())
+            .collect();
         let (lambda, v) = power_method(&a, 0, 0.0).unwrap();
         assert!((lambda - 1.0).abs() < 1e-9, "lambda={lambda}");
         assert!((l2_norm(&v) - 1.0).abs() < 1e-9, "v not unit: {:?}", v);
@@ -192,7 +204,11 @@ mod tests {
 
     #[test]
     fn test_power_method_diagonal() {
-        let a = vec![vec![3.0, 0.0, 0.0], vec![0.0, 2.0, 0.0], vec![0.0, 0.0, 1.0]];
+        let a = vec![
+            vec![3.0, 0.0, 0.0],
+            vec![0.0, 2.0, 0.0],
+            vec![0.0, 0.0, 1.0],
+        ];
         let (lambda, v) = power_method(&a, 0, 0.0).unwrap();
         assert!((lambda - 3.0).abs() < 1e-6, "lambda={lambda}");
         assert!((v[0].abs() - 1.0).abs() < 1e-6, "v={:?}", v);
@@ -214,12 +230,19 @@ mod tests {
 
     #[test]
     fn test_deflation_removes_component() {
-        let a = vec![vec![3.0, 0.0, 0.0], vec![0.0, 2.0, 0.0], vec![0.0, 0.0, 1.0]];
+        let a = vec![
+            vec![3.0, 0.0, 0.0],
+            vec![0.0, 2.0, 0.0],
+            vec![0.0, 0.0, 1.0],
+        ];
         let (lambda, v) = power_method(&a, 0, 0.0).unwrap();
         assert!((lambda - 3.0).abs() < 1e-6);
         let a_def = deflate(&a, lambda, &v);
         // The deflated matrix's dominant eigenvalue should now be ~2.
         let (lambda2, _v2) = power_method(&a_def, 0, 0.0).unwrap();
-        assert!((lambda2 - 2.0).abs() < 1e-3, "second eigenvalue = {lambda2}");
+        assert!(
+            (lambda2 - 2.0).abs() < 1e-3,
+            "second eigenvalue = {lambda2}"
+        );
     }
 }

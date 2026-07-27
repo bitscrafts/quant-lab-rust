@@ -8,7 +8,7 @@
 //!   cargo run -p qf-05-backtest --example backtest_demo
 
 use qf_03_stocks::Ohlcv;
-use qf_05_backtest::{run_backtest, BacktestConfig, BuyAndHold, SmaCrossover, Strategy};
+use qf_05_backtest::{BacktestConfig, BuyAndHold, SmaCrossover, Strategy, run_backtest};
 
 /// Build a deterministic 252-bar synthetic price series with a slow upward
 /// drift, a mid-year drawdown, and a recovery — enough regime change for the
@@ -65,7 +65,11 @@ fn main() {
     println!("==============================\n");
 
     let data = synthetic_series();
-    let period = format!("{} to {}", data.first().unwrap().date, data.last().unwrap().date);
+    let period = format!(
+        "{} to {}",
+        data.first().unwrap().date,
+        data.last().unwrap().date
+    );
     println!("Period: {}\n", period);
 
     let config = BacktestConfig::default();
@@ -74,10 +78,16 @@ fn main() {
     let strat_result = run_backtest(&strategy, &data, &config).unwrap();
     let bh_result = run_backtest(&BuyAndHold, &data, &config).unwrap();
 
-    print_result(&format!("Strategy: {} (10/30)", strategy.name()), &strat_result);
+    print_result(
+        &format!("Strategy: {} (10/30)", strategy.name()),
+        &strat_result,
+    );
     print_result("Strategy: Buy and Hold", &bh_result);
 
     let outperformance = strat_result.total_return - bh_result.total_return;
-    println!("Outperformance vs Buy & Hold: {:+.2}%", outperformance * 100.0);
+    println!(
+        "Outperformance vs Buy & Hold: {:+.2}%",
+        outperformance * 100.0
+    );
     println!("==============================");
 }

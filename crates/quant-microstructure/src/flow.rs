@@ -19,10 +19,26 @@ pub fn order_flow_imbalance(snapshots: &[BookSnapshot]) -> Vec<f64> {
     }
     let mut result = Vec::with_capacity(snapshots.len() - 1);
     for i in 1..snapshots.len() {
-        let prev_bid = snapshots[i - 1].best_bid.as_ref().map(|l| l.quantity as f64).unwrap_or(0.0);
-        let prev_ask = snapshots[i - 1].best_ask.as_ref().map(|l| l.quantity as f64).unwrap_or(0.0);
-        let curr_bid = snapshots[i].best_bid.as_ref().map(|l| l.quantity as f64).unwrap_or(0.0);
-        let curr_ask = snapshots[i].best_ask.as_ref().map(|l| l.quantity as f64).unwrap_or(0.0);
+        let prev_bid = snapshots[i - 1]
+            .best_bid
+            .as_ref()
+            .map(|l| l.quantity as f64)
+            .unwrap_or(0.0);
+        let prev_ask = snapshots[i - 1]
+            .best_ask
+            .as_ref()
+            .map(|l| l.quantity as f64)
+            .unwrap_or(0.0);
+        let curr_bid = snapshots[i]
+            .best_bid
+            .as_ref()
+            .map(|l| l.quantity as f64)
+            .unwrap_or(0.0);
+        let curr_ask = snapshots[i]
+            .best_ask
+            .as_ref()
+            .map(|l| l.quantity as f64)
+            .unwrap_or(0.0);
         result.push((curr_bid - prev_bid) - (curr_ask - prev_ask));
     }
     result
@@ -76,13 +92,29 @@ mod tests {
         let snapshots = vec![
             BookSnapshot {
                 timestamp: 1,
-                best_bid: Some(Level { price: 100, quantity: 50, order_count: 1 }),
-                best_ask: Some(Level { price: 101, quantity: 30, order_count: 1 }),
+                best_bid: Some(Level {
+                    price: 100,
+                    quantity: 50,
+                    order_count: 1,
+                }),
+                best_ask: Some(Level {
+                    price: 101,
+                    quantity: 30,
+                    order_count: 1,
+                }),
             },
             BookSnapshot {
                 timestamp: 2,
-                best_bid: Some(Level { price: 100, quantity: 60, order_count: 1 }),
-                best_ask: Some(Level { price: 101, quantity: 25, order_count: 1 }),
+                best_bid: Some(Level {
+                    price: 100,
+                    quantity: 60,
+                    order_count: 1,
+                }),
+                best_ask: Some(Level {
+                    price: 101,
+                    quantity: 25,
+                    order_count: 1,
+                }),
             },
         ];
         let ofi = order_flow_imbalance(&snapshots);
@@ -104,15 +136,27 @@ mod tests {
 
     #[test]
     fn test_vwap_single_fill() {
-        let fills = vec![Fill { price: 100, quantity: 10, maker_order_id: 1 }];
+        let fills = vec![Fill {
+            price: 100,
+            quantity: 10,
+            maker_order_id: 1,
+        }];
         assert!((vwap(&fills) - 100.0).abs() < 1e-9);
     }
 
     #[test]
     fn test_vwap_multiple_fills() {
         let fills = vec![
-            Fill { price: 100, quantity: 10, maker_order_id: 1 },
-            Fill { price: 102, quantity: 20, maker_order_id: 2 },
+            Fill {
+                price: 100,
+                quantity: 10,
+                maker_order_id: 1,
+            },
+            Fill {
+                price: 102,
+                quantity: 20,
+                maker_order_id: 2,
+            },
         ];
         // VWAP = (100*10 + 102*20) / 30 = (1000 + 2040) / 30 = 3040/30 = 101.333...
         let expected = (100.0 * 10.0 + 102.0 * 20.0) / 30.0;
@@ -127,8 +171,18 @@ mod tests {
     #[test]
     fn test_trade_imbalance() {
         let trades = vec![
-            Trade { price: 100, quantity: 30, side: Side::Bid, timestamp: 1 },
-            Trade { price: 101, quantity: 10, side: Side::Ask, timestamp: 2 },
+            Trade {
+                price: 100,
+                quantity: 30,
+                side: Side::Bid,
+                timestamp: 1,
+            },
+            Trade {
+                price: 101,
+                quantity: 10,
+                side: Side::Ask,
+                timestamp: 2,
+            },
         ];
         // (30 - 10) / 40 = 0.5
         assert!((trade_imbalance(&trades) - 0.5).abs() < 1e-9);
@@ -137,8 +191,18 @@ mod tests {
     #[test]
     fn test_trade_imbalance_all_buys() {
         let trades = vec![
-            Trade { price: 100, quantity: 10, side: Side::Bid, timestamp: 1 },
-            Trade { price: 101, quantity: 20, side: Side::Bid, timestamp: 2 },
+            Trade {
+                price: 100,
+                quantity: 10,
+                side: Side::Bid,
+                timestamp: 1,
+            },
+            Trade {
+                price: 101,
+                quantity: 20,
+                side: Side::Bid,
+                timestamp: 2,
+            },
         ];
         assert!((trade_imbalance(&trades) - 1.0).abs() < 1e-9);
     }

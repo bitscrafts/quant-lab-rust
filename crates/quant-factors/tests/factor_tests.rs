@@ -8,8 +8,8 @@
 #![allow(clippy::useless_vec)]
 
 use quant_factors::{
-    deflate, ff3_regression, pca, pca_reconstruct, pca_transform, power_method,
-    risk_attribution, top_k_eigen,
+    deflate, ff3_regression, pca, pca_reconstruct, pca_transform, power_method, risk_attribution,
+    top_k_eigen,
 };
 
 fn l2(v: &[f64]) -> f64 {
@@ -33,7 +33,11 @@ fn test_power_method_identity() {
 
 #[test]
 fn test_power_method_diagonal() {
-    let a = vec![vec![5.0, 0.0, 0.0], vec![0.0, 3.0, 0.0], vec![0.0, 0.0, 1.0]];
+    let a = vec![
+        vec![5.0, 0.0, 0.0],
+        vec![0.0, 3.0, 0.0],
+        vec![0.0, 0.0, 1.0],
+    ];
     let (lambda, v) = power_method(&a, 0, 0.0).unwrap();
     assert!((lambda - 5.0).abs() < 1e-6);
     assert!((v[0].abs() - 1.0).abs() < 1e-6);
@@ -68,7 +72,10 @@ fn test_eigenvectors_orthonormal() {
     for i in 0..3 {
         for j in (i + 1)..3 {
             let d = dot(&vecs[i], &vecs[j]);
-            assert!(d.abs() < 1e-4, "eigenvectors {i} and {j} not orthogonal (dot={d})");
+            assert!(
+                d.abs() < 1e-4,
+                "eigenvectors {i} and {j} not orthogonal (dot={d})"
+            );
         }
     }
 }
@@ -131,7 +138,10 @@ fn test_pca_reconstruction_partial() {
         .zip(r2.iter())
         .flat_map(|(o, r)| o.iter().zip(r.iter()).map(|(a, b)| (a - b).powi(2)))
         .sum();
-    assert!(e1 > e2, "1-component error {e1} should exceed 2-component {e2}");
+    assert!(
+        e1 > e2,
+        "1-component error {e1} should exceed 2-component {e2}"
+    );
     assert!(e2 > 1e-9, "2-component error should be nonzero");
 }
 
@@ -141,17 +151,21 @@ fn test_ff3_single_factor_reduces() {
     // on SMB and HML should be near zero and beta_mkt should match the
     // true generating coefficient. (We use independent noise for SMB and
     // HML so the design matrix is well-conditioned.)
-    let mkt = vec![0.01, -0.02, 0.03, 0.0, -0.01, 0.02, -0.005, 0.015, -0.01, 0.025];
-    let smb = vec![0.001, -0.002, 0.0015, -0.001, 0.002, -0.0015, 0.001, -0.002, 0.0015, -0.001];
-    let hml = vec![0.0015, 0.001, -0.002, -0.0015, 0.001, 0.002, -0.001, 0.0015, -0.002, 0.001];
+    let mkt = vec![
+        0.01, -0.02, 0.03, 0.0, -0.01, 0.02, -0.005, 0.015, -0.01, 0.025,
+    ];
+    let smb = vec![
+        0.001, -0.002, 0.0015, -0.001, 0.002, -0.0015, 0.001, -0.002, 0.0015, -0.001,
+    ];
+    let hml = vec![
+        0.0015, 0.001, -0.002, -0.0015, 0.001, 0.002, -0.001, 0.0015, -0.002, 0.001,
+    ];
     let alpha_true = 0.002_f64;
     let beta_mkt_true = 1.5_f64;
     let asset: Vec<f64> = (0..10)
         .map(|t| alpha_true + beta_mkt_true * mkt[t])
         .collect();
-    let factors: Vec<Vec<f64>> = (0..10)
-        .map(|t| vec![mkt[t], smb[t], hml[t]])
-        .collect();
+    let factors: Vec<Vec<f64>> = (0..10).map(|t| vec![mkt[t], smb[t], hml[t]]).collect();
     let ff = ff3_regression(&asset, &factors).unwrap();
     assert!((ff.beta_mkt - beta_mkt_true).abs() < 1e-6);
     assert!(ff.beta_smb.abs() < 1e-6);
@@ -164,29 +178,40 @@ fn test_ff3_r_squared_improvement() {
     // (R^2 is non-decreasing in the number of regressors). We compare
     // the FF3 R^2 to the squared correlation between the asset and the
     // market (the R^2 of the simple linear regression on the market alone).
-    let mkt = vec![0.01, -0.02, 0.03, 0.0, -0.01, 0.02, -0.005, 0.015, -0.01, 0.025];
-    let smb = vec![0.002, -0.001, 0.003, -0.002, 0.001, -0.003, 0.002, -0.001, 0.003, -0.002];
-    let hml = vec![-0.001, 0.002, -0.001, 0.003, -0.002, 0.001, -0.003, 0.002, -0.001, 0.003];
+    let mkt = vec![
+        0.01, -0.02, 0.03, 0.0, -0.01, 0.02, -0.005, 0.015, -0.01, 0.025,
+    ];
+    let smb = vec![
+        0.002, -0.001, 0.003, -0.002, 0.001, -0.003, 0.002, -0.001, 0.003, -0.002,
+    ];
+    let hml = vec![
+        -0.001, 0.002, -0.001, 0.003, -0.002, 0.001, -0.003, 0.002, -0.001, 0.003,
+    ];
     // Generate the asset from all three factors (with a small noise) so
     // the 3-factor model has higher R^2 than the 1-factor model.
     let alpha = 0.001;
     let b_m = 1.2;
     let b_s = 0.5;
     let b_h = 0.3;
-    let noise = vec![0.0001, -0.0001, 0.0002, -0.0002, 0.0001, -0.0001, 0.0002, -0.0002, 0.0001, -0.0001];
+    let noise = vec![
+        0.0001, -0.0001, 0.0002, -0.0002, 0.0001, -0.0001, 0.0002, -0.0002, 0.0001, -0.0001,
+    ];
     let asset: Vec<f64> = (0..10)
         .map(|t| alpha + b_m * mkt[t] + b_s * smb[t] + b_h * hml[t] + noise[t])
         .collect();
     // 3-factor R^2 via the FF3 regression.
-    let factors3: Vec<Vec<f64>> = (0..10)
-        .map(|t| vec![mkt[t], smb[t], hml[t]])
-        .collect();
+    let factors3: Vec<Vec<f64>> = (0..10).map(|t| vec![mkt[t], smb[t], hml[t]]).collect();
     let ff3 = ff3_regression(&asset, &factors3).unwrap();
     // 1-factor R^2 as the squared Pearson correlation r(asset, mkt).
     let n = asset.len() as f64;
     let mean_a = asset.iter().sum::<f64>() / n;
     let mean_m = mkt.iter().sum::<f64>() / n;
-    let cov: f64 = asset.iter().zip(mkt.iter()).map(|(a, m)| (a - mean_a) * (m - mean_m)).sum::<f64>() / (n - 1.0);
+    let cov: f64 = asset
+        .iter()
+        .zip(mkt.iter())
+        .map(|(a, m)| (a - mean_a) * (m - mean_m))
+        .sum::<f64>()
+        / (n - 1.0);
     let var_a: f64 = asset.iter().map(|a| (a - mean_a).powi(2)).sum::<f64>() / (n - 1.0);
     let var_m: f64 = mkt.iter().map(|m| (m - mean_m).powi(2)).sum::<f64>() / (n - 1.0);
     let r1_squared = (cov * cov) / (var_a * var_m);
@@ -202,9 +227,15 @@ fn test_ff3_r_squared_improvement() {
 fn test_ff3_alpha_zero_equilibrium() {
     // When the asset is exactly generated by the 3-factor model (no
     // noise), the estimated alpha matches the true alpha and R^2 = 1.
-    let mkt = vec![0.01, -0.02, 0.03, 0.0, -0.01, 0.02, -0.005, 0.015, -0.01, 0.025];
-    let smb = vec![0.002, -0.001, 0.003, -0.002, 0.001, -0.003, 0.002, -0.001, 0.003, -0.002];
-    let hml = vec![-0.001, 0.002, -0.001, 0.003, -0.002, 0.001, -0.003, 0.002, -0.001, 0.003];
+    let mkt = vec![
+        0.01, -0.02, 0.03, 0.0, -0.01, 0.02, -0.005, 0.015, -0.01, 0.025,
+    ];
+    let smb = vec![
+        0.002, -0.001, 0.003, -0.002, 0.001, -0.003, 0.002, -0.001, 0.003, -0.002,
+    ];
+    let hml = vec![
+        -0.001, 0.002, -0.001, 0.003, -0.002, 0.001, -0.003, 0.002, -0.001, 0.003,
+    ];
     let alpha_true = 0.0015;
     let b_m = 1.1;
     let b_s = 0.4;
@@ -212,9 +243,7 @@ fn test_ff3_alpha_zero_equilibrium() {
     let asset: Vec<f64> = (0..10)
         .map(|t| alpha_true + b_m * mkt[t] + b_s * smb[t] + b_h * hml[t])
         .collect();
-    let factors: Vec<Vec<f64>> = (0..10)
-        .map(|t| vec![mkt[t], smb[t], hml[t]])
-        .collect();
+    let factors: Vec<Vec<f64>> = (0..10).map(|t| vec![mkt[t], smb[t], hml[t]]).collect();
     let ff = ff3_regression(&asset, &factors).unwrap();
     assert!((ff.alpha - alpha_true).abs() < 1e-6);
     assert!((ff.beta_mkt - b_m).abs() < 1e-6);
@@ -253,12 +282,19 @@ fn test_factor_contribution_sum() {
 
 #[test]
 fn test_deflation_removes_component() {
-    let a = vec![vec![4.0, 0.0, 0.0], vec![0.0, 3.0, 0.0], vec![0.0, 0.0, 2.0]];
+    let a = vec![
+        vec![4.0, 0.0, 0.0],
+        vec![0.0, 3.0, 0.0],
+        vec![0.0, 0.0, 2.0],
+    ];
     let (lambda, v) = power_method(&a, 0, 0.0).unwrap();
     assert!((lambda - 4.0).abs() < 1e-6);
     let a_def = deflate(&a, lambda, &v);
     let (lambda2, _v2) = power_method(&a_def, 0, 0.0).unwrap();
-    assert!((lambda2 - 3.0).abs() < 1e-3, "second eigenvalue = {lambda2}");
+    assert!(
+        (lambda2 - 3.0).abs() < 1e-3,
+        "second eigenvalue = {lambda2}"
+    );
 }
 
 #[test]
@@ -283,10 +319,18 @@ fn test_factors_smoke() {
     for &lam in &res.eigenvalues {
         assert!(lam.is_finite());
     }
-    let mkt = vec![0.01, -0.02, 0.03, 0.0, -0.01, 0.02, -0.005, 0.015, -0.01, 0.025];
-    let smb = vec![0.002, -0.001, 0.003, -0.002, 0.001, -0.003, 0.002, -0.001, 0.003, -0.002];
-    let hml = vec![-0.001, 0.002, -0.001, 0.003, -0.002, 0.001, -0.003, 0.002, -0.001, 0.003];
-    let asset: Vec<f64> = (0..10).map(|t| 0.001 + 1.1 * mkt[t] + 0.4 * smb[t]).collect();
+    let mkt = vec![
+        0.01, -0.02, 0.03, 0.0, -0.01, 0.02, -0.005, 0.015, -0.01, 0.025,
+    ];
+    let smb = vec![
+        0.002, -0.001, 0.003, -0.002, 0.001, -0.003, 0.002, -0.001, 0.003, -0.002,
+    ];
+    let hml = vec![
+        -0.001, 0.002, -0.001, 0.003, -0.002, 0.001, -0.003, 0.002, -0.001, 0.003,
+    ];
+    let asset: Vec<f64> = (0..10)
+        .map(|t| 0.001 + 1.1 * mkt[t] + 0.4 * smb[t])
+        .collect();
     let factors: Vec<Vec<f64>> = (0..10).map(|t| vec![mkt[t], smb[t], hml[t]]).collect();
     let ff = ff3_regression(&asset, &factors).unwrap();
     assert!(ff.alpha.is_finite());

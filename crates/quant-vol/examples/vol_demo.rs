@@ -7,7 +7,7 @@
 //! 4. Compare Gaussian log-likelihoods across the three models.
 
 use quant_core::{Distribution, Normal, XorShift64};
-use quant_vol::{ewma_vol, ArchModel, GarchModel};
+use quant_vol::{ArchModel, GarchModel, ewma_vol};
 
 fn main() {
     let mut rng = XorShift64::new(42);
@@ -80,7 +80,10 @@ fn main() {
     println!("  ARCH(1):         {:.2}", arch_ll);
     println!("  GARCH(1,1):      {:.2}", garch_ll);
     if garch_ll > arch_ll {
-        println!("  -> GARCH(1,1) beats ARCH(1) by {:.1} LL points", garch_ll - arch_ll);
+        println!(
+            "  -> GARCH(1,1) beats ARCH(1) by {:.1} LL points",
+            garch_ll - arch_ll
+        );
     }
     println!();
     println!("==============================");

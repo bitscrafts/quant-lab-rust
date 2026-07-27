@@ -130,10 +130,7 @@ mod tests {
         let rf = 0.02;
         let market = vec![0.05, 0.06, 0.04, 0.07, 0.05];
         let b_target = 1.2_f64;
-        let asset: Vec<f64> = market
-            .iter()
-            .map(|m| rf + b_target * (m - rf))
-            .collect();
+        let asset: Vec<f64> = market.iter().map(|m| rf + b_target * (m - rf)).collect();
         let a = alpha(&asset, &market, rf).unwrap();
         assert_abs_diff_eq!(a, 0.0, epsilon = 1e-9);
     }

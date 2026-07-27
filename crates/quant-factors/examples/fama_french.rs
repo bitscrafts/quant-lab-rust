@@ -48,9 +48,12 @@ fn main() {
     // Single-factor (CAPM) R^2 = squared correlation between asset and market.
     let mean_a = asset.iter().sum::<f64>() / n as f64;
     let mean_m = mkt.iter().sum::<f64>() / n as f64;
-    let cov: f64 = asset.iter().zip(mkt.iter())
+    let cov: f64 = asset
+        .iter()
+        .zip(mkt.iter())
         .map(|(a, m)| (a - mean_a) * (m - mean_m))
-        .sum::<f64>() / (n - 1) as f64;
+        .sum::<f64>()
+        / (n - 1) as f64;
     let var_a: f64 = asset.iter().map(|a| (a - mean_a).powi(2)).sum::<f64>() / (n - 1) as f64;
     let var_m: f64 = mkt.iter().map(|m| (m - mean_m).powi(2)).sum::<f64>() / (n - 1) as f64;
     let r1_squared = (cov * cov) / (var_a * var_m);
@@ -58,9 +61,11 @@ fn main() {
     println!("\n=== Comparison: FF3 vs CAPM ===\n");
     println!("CAPM (1-factor) R^2 = {:.6}", r1_squared);
     println!("FF3  (3-factor) R^2 = {:.6}", ff.r_squared);
-    println!("Improvement         = {:.6} ({}%)",
+    println!(
+        "Improvement         = {:.6} ({}%)",
         ff.r_squared - r1_squared,
-        ((ff.r_squared - r1_squared) / r1_squared * 100.0));
+        ((ff.r_squared - r1_squared) / r1_squared * 100.0)
+    );
     println!("\nThe 3-factor model captures the size and value exposures that");
     println!("the single-factor CAPM attributes to idiosyncratic noise, so");
     println!("the R^2 improvement quantifies the incremental explanatory");
@@ -80,7 +85,8 @@ fn main() {
             for j in 0..3 {
                 cov[i][j] = (0..n)
                     .map(|t| (cols[i][t] - means[i]) * (cols[j][t] - means[j]))
-                    .sum::<f64>() / (n - 1) as f64;
+                    .sum::<f64>()
+                    / (n - 1) as f64;
             }
         }
         cov
@@ -91,10 +97,18 @@ fn main() {
     let ra = quant_factors::risk_attribution(&weights, &loadings, &factor_cov, &resid).unwrap();
     println!("\n=== Risk Attribution ===\n");
     println!("Total variance      = {:.6e}", ra.total_variance);
-    println!("Systematic         = {:.6e} ({:.1}%)", ra.systematic_variance,
-        ra.systematic_variance / ra.total_variance * 100.0);
-    println!("Idiosyncratic       = {:.6e} ({:.1}%)", ra.idiosyncratic_variance,
-        ra.idiosyncratic_variance / ra.total_variance * 100.0);
-    println!("Factor contributions: Mkt={:.6e}, SMB={:.6e}, HML={:.6e}",
-        ra.factor_contributions[0], ra.factor_contributions[1], ra.factor_contributions[2]);
+    println!(
+        "Systematic         = {:.6e} ({:.1}%)",
+        ra.systematic_variance,
+        ra.systematic_variance / ra.total_variance * 100.0
+    );
+    println!(
+        "Idiosyncratic       = {:.6e} ({:.1}%)",
+        ra.idiosyncratic_variance,
+        ra.idiosyncratic_variance / ra.total_variance * 100.0
+    );
+    println!(
+        "Factor contributions: Mkt={:.6e}, SMB={:.6e}, HML={:.6e}",
+        ra.factor_contributions[0], ra.factor_contributions[1], ra.factor_contributions[2]
+    );
 }

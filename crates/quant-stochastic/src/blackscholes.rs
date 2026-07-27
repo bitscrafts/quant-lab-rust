@@ -24,8 +24,7 @@ fn erf(x: f64) -> f64 {
     let a5 = 1.061405429_f64;
     let p = 0.3275911_f64;
     let t = 1.0 / (1.0 + p * ax);
-    let y = 1.0
-        - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * (-ax * ax).exp();
+    let y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * (-ax * ax).exp();
     sign * y
 }
 
