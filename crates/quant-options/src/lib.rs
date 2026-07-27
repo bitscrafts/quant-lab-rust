@@ -11,7 +11,7 @@
 //!
 //! - [`greeks`][]: analytical Delta, Gamma, Vega, Theta, Rho
 //! - [`finite_diff`][]: finite-difference Greeks (central / forward differences)
-//! - [`implied_vol`][]: implied-volatility solver (Newton + bisection fallback)
+//! - [`mod@implied_vol`][]: implied-volatility solver (Newton + bisection fallback)
 //! - [`error`][]: `OptionsError`
 //!
 //! # Example

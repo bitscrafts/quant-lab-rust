@@ -11,7 +11,7 @@
 //! # Modules
 //!
 //! - [`eigen`]: `power_method`, `deflate`, `top_k_eigen`
-//! - [`pca`]: `PcaResult`, `pca`, `pca_transform`, `pca_reconstruct`
+//! - [`mod@pca`]: `PcaResult`, `pca`, `pca_transform`, `pca_reconstruct`
 //! - [`fama_french`]: `FF3Exposure`, `ff3_regression`
 //! - [`risk`]: `RiskAttribution`, `risk_attribution`
 //! - `error`: `FactorError`
