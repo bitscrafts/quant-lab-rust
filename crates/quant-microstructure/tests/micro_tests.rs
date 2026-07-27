@@ -190,7 +190,7 @@ fn t13_trade_imbalance_bounds() {
     let ti = trade_imbalance(&trades);
     // (30 - 10) / 40 = 0.5
     assert!((ti - 0.5).abs() < 1e-9);
-    assert!(ti >= -1.0 && ti <= 1.0);
+    assert!((-1.0..=1.0).contains(&ti));
 }
 
 // =========================================================================

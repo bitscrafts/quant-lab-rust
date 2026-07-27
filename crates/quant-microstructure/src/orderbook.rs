@@ -40,7 +40,7 @@ impl OrderBook {
     /// Add a limit order to the book. Returns an error if the price is not
     /// a multiple of the tick size, or if the order id already exists.
     pub fn add_order(&mut self, order: Order) -> Result<(), MicroError> {
-        if self.tick_size > 0 && order.price % self.tick_size != 0 {
+        if self.tick_size > 0 && !order.price.is_multiple_of(self.tick_size) {
             return Err(MicroError::InvalidOrder(format!(
                 "price {} is not a multiple of tick size {}",
                 order.price, self.tick_size

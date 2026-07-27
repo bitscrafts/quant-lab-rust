@@ -12,14 +12,8 @@ use quant_core::{Distribution, Normal, Rng};
 /// `Exp(lambda)`, with mean `1 / lambda`.
 pub fn exponential_variate<R: Rng + ?Sized>(rate: f64, rng: &mut R) -> f64 {
     let u = rng.next_f64();
-    // Clamp u away from 1 to avoid ln(0); clamp away from 0 for symmetry.
-    let u = if u < f64::EPSILON {
-        f64::EPSILON
-    } else if u > 1.0 - f64::EPSILON {
-        1.0 - f64::EPSILON
-    } else {
-        u
-    };
+    // Clamp u away from 0 and 1 to avoid ln(0).
+    let u = u.clamp(f64::EPSILON, 1.0 - f64::EPSILON);
     -(1.0 - u).ln() / rate
 }
 
