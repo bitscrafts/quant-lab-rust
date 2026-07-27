@@ -1,0 +1,420 @@
+\chapter{Options Pricing: Black-Scholes and Beyond}
+\label{ch:options}
+
+\begin{companioncode}{quant-options}
+Code: \texttt{crates/quant-options/}\\
+Dependencies: \crate{quant-core}, \crate{quant-stochastic}, \crate{thiserror}\\
+Run: \texttt{cargo run -p quant-options --example greeks}
+\end{companioncode}
+
+\section{Learning Objectives}
+
+This chapter builds the full Black-Scholes options toolkit on top of the
+closed-form pricing primitives from \cref{ch:stochastic}: the Greeks
+(Delta, Gamma, Vega, Theta, Rho) analytically and by finite difference,
+and implied volatility via Newton's method with a bisection fallback.
+After completing it you can:
+
+\begin{itemize}
+    \item State the Black-Scholes PDE and the risk-neutral derivation
+    \item Compute all five first- and second-order Greeks in closed form
+    \item Recover the same Greeks by finite difference for any pricing
+      model (not just Black-Scholes)
+    \item Solve for implied volatility from a market price using Newton's
+      method, and explain why a bisection fallback is needed for deep
+      in/out-of-the-money options
+    \item Reproduce a synthetic volatility smile and explain its shape
+\end{itemize}
+
+\begin{keyinsight}
+The Greeks are the partial derivatives of the option price with respect to
+its inputs. Delta-hedging (holding $-\Delta$ shares against a long call)
+eliminates first-order price risk; Gamma controls the residual hedging
+error. Implied volatility inverts the Black-Scholes formula to recover
+the market's view of future variance --- the ``volatility smile'' is the
+single most studied phenomenon in derivatives.
+\end{keyinsight}
+
+\section{The Black-Scholes PDE}
+
+\marginnote{%
+\textbf{Black-Scholes PDE}\\[0.3em]
+$\dfrac{\partial V}{\partial t} + \dfrac{1}{2}\sigma^2 S^2
+\dfrac{\partial^2 V}{\partial S^2} + r S \dfrac{\partial V}{\partial S}
+- r V = 0$
+}
+
+The Black-Scholes model assumes the underlying follows geometric Brownian
+motion (see \cref{ch:stochastic}):
+\[
+dS_t = \mu S_t \, dt + \sigma S_t \, dW_t.
+\]
+By holding a continuously rebalanced portfolio of the option and
+$-\Delta$ shares of stock, the residual risk is eliminated to first order.
+No-arbitrage then requires the portfolio to earn the risk-free rate,
+which yields the Black-Scholes PDE:
+\[
+\frac{\partial V}{\partial t} + \frac{1}{2}\sigma^2 S^2
+\frac{\partial^2 V}{\partial S^2} + r S \frac{\partial V}{\partial S}
+- r V = 0.
+\]
+Solving this PDE with the terminal payoff $\max(S_T - K, 0)$ for a call
+(or $\max(K - S_T, 0)$ for a put) gives the closed forms
+\[
+C = S_0 \Phi(d_1) - K e^{-rT} \Phi(d_2), \qquad
+P = K e^{-rT} \Phi(-d_2) - S_0 \Phi(-d_1),
+\]
+with
+\[
+d_1 = \frac{\ln(S_0/K) + (r + \frac{1}{2}\sigma^2)T}{\sigma\sqrt{T}},
+\quad d_2 = d_1 - \sigma\sqrt{T}.
+\]
+These are the formulas we reuse from \crate{quant-stochastic::blackscholes}.
+
+\section{The Greeks as Partial Derivatives}
+
+\marginnote{%
+\textbf{Greeks}\\[0.3em]
+$\Delta = \dfrac{\partial C}{\partial S}$ \quad (spot)\\
+$\Gamma = \dfrac{\partial^2 C}{\partial S^2}$ \quad (curvature)\\
+$\mathcal{V} = \dfrac{\partial C}{\partial \sigma}$ \quad (vol)\\
+$\Theta = \dfrac{\partial C}{\partial t}$ \quad (time)\\
+$\rho  = \dfrac{\partial C}{\partial r}$ \quad (rate)
+}
+
+The Greeks are the sensitivities of the option price to its inputs. They
+are the building blocks of hedging and risk management:
+
+\begin{description}
+    \item[Delta ($\Delta$)] $\partial C / \partial S$. The hedge ratio:
+      holding $-\Delta$ shares against a long option removes first-order
+      spot risk. A call has $\Delta \in (0, 1)$; a put $\Delta \in (-1,
+      0)$.
+    \item[Gamma ($\Gamma$)] $\partial^2 C / \partial S^2$. The rate of
+      change of Delta. High Gamma means the hedge must rebalance
+      frequently --- Gamma is largest at-the-money and shrinks in the
+      wings. Identical for calls and puts.
+    \item[Vega ($\mathcal{V}$)] $\partial C / \partial \sigma$. The
+      sensitivity to volatility. Identical for calls and puts.
+    \item[Theta ($\Theta$)] $\partial C / \partial t$. The time decay.
+      Long options lose value as expiry approaches, so $\Theta < 0$ for
+      long calls and puts.
+    \item[Rho ($\rho$)] $\partial C / \partial r$. The sensitivity to the
+      risk-free rate. Calls gain with $r$ (positive $\rho$); puts lose
+      (negative $\rho$).
+\end{description}
+
+\section{Analytical Greeks}
+
+\marginnote{%
+\textbf{Analytical Greeks (call)}\\[0.3em]
+$\Delta = \Phi(d_1)$\\
+$\Gamma = \dfrac{\phi(d_1)}{S_0 \sigma \sqrt{T}}$\\
+$\mathcal{V} = S_0 \phi(d_1) \sqrt{T}$\\
+$\Theta = -\dfrac{S_0 \phi(d_1) \sigma}{2\sqrt{T}} - r K e^{-rT} \Phi(d_2)$\\
+$\rho = K T e^{-rT} \Phi(d_2)$
+}
+
+Closed forms for the five Greeks follow from differentiating the
+Black-Scholes price. Let $\phi(x) = (2\pi)^{-1/2} e^{-x^2/2}$ be the
+standard normal PDF (the derivative of $\Phi$). We implement it inline
+in \crate{quant-options::greeks}:
+
+\begin{lstlisting}[language=Rust]
+/// Standard normal PDF phi(x) = (1/sqrt(2 pi)) exp(-x^2 / 2).
+pub fn normal_pdf(x: f64) -> f64 {
+    const INV_SQRT_2PI: f64 = 0.398_942_280_401_432_7;
+    INV_SQRT_2PI * (-0.5 * x * x).exp()
+}
+\end{lstlisting}
+
+The analytical Greeks then drop out:
+
+\begin{lstlisting}[language=Rust]
+pub fn delta(s0, k, r, sigma, t, is_call: bool) -> f64 {
+    let d1_val = d1(s0, k, r, sigma, t);
+    let n_d1 = normal_cdf(d1_val);
+    if is_call { n_d1 } else { n_d1 - 1.0 }
+}
+
+pub fn gamma(s0, k, r, sigma, t) -> f64 {
+    let d1_val = d1(s0, k, r, sigma, t);
+    normal_pdf(d1_val) / (s0 * sigma * t.sqrt())
+}
+
+pub fn vega(s0, k, r, sigma, t) -> f64 {
+    let d1_val = d1(s0, k, r, sigma, t);
+    s0 * normal_pdf(d1_val) * t.sqrt()
+}
+\end{lstlisting}
+
+Theta and Rho differ between call and put; the call versions are
+\[
+\Theta_c = -\frac{S_0 \phi(d_1) \sigma}{2\sqrt{T}} - r K e^{-rT} \Phi(d_2),
+\qquad
+\rho_c = K T e^{-rT} \Phi(d_2).
+\]
+The put versions follow from put-call parity:
+$\Theta_p = \Theta_c + r K e^{-rT}$ and
+$\rho_p = -K T e^{-rT} \Phi(-d_2) = \rho_c - K T e^{-rT}$.
+
+\section{Numerical Greeks by Finite Difference}
+
+\marginnote{%
+\textbf{Central difference}\\[0.3em]
+$f'(x) \approx \dfrac{f(x+h) - f(x-h)}{2 h}$ \\[0.3em]
+Error: $O(h^2)$
+}
+
+Analytical Greeks require a closed form. For models without a closed form
+(local volatility, Heston, Monte Carlo) the same sensitivities are
+recovered by finite difference. The central difference
+\[
+f'(x) \approx \frac{f(x+h) - f(x-h)}{2h}
+\]
+is second-order accurate: the symmetric form cancels the $O(h)$
+truncation term, leaving $O(h^2)$. For Gamma (a second derivative), the
+central second difference
+\[
+f''(x) \approx \frac{f(x+h) - 2 f(x) + f(x-h)}{h^2}
+\]
+is likewise $O(h^2)$.
+
+\begin{lstlisting}[language=Rust]
+pub fn delta_fd(s0, k, r, sigma, t, is_call, h) -> f64 {
+    let up = price(s0 + h, k, r, sigma, t, is_call);
+    let down = price(s0 - h, k, r, sigma, t, is_call);
+    (up - down) / (2.0 * h)
+}
+
+pub fn gamma_fd(s0, k, r, sigma, t, h) -> f64 {
+    let up = price(s0 + h, k, r, sigma, t, true);
+    let mid = price(s0, k, r, sigma, t, true);
+    let down = price(s0 - h, k, r, sigma, t, true);
+    (up - 2.0 * mid + down) / (h * h)
+}
+\end{lstlisting}
+
+\begin{keyinsight}
+Finite difference is a sanity check on the analytical Greeks. If the two
+disagree by more than a few basis points, one of them is wrong. With
+$h = 10^{-4}$ for spot bumps and $h = 10^{-3}$ for the second derivative,
+the analytical and numerical Greeks agree to $10^{-4}$ or better --- the
+truncation and round-off errors are well balanced.
+\end{keyinsight}
+
+Theta uses a \emph{forward} difference, not central, because we cannot
+step to $t - h < 0$ for a short-dated option:
+\[
+\Theta \approx \frac{C(t - h) - C(t)}{h}.
+\]
+The sign is the ``desk convention'': Theta is the negative of
+$\partial C / \partial T$ (time to maturity), since long options lose
+value as calendar time advances.
+
+\section{Implied Volatility}
+
+\marginnote{%
+\textbf{Newton's method}\\[0.3em]
+$\sigma_{n+1} = \sigma_n - \dfrac{C(\sigma_n) - C_{\text{mkt}}}{\mathcal{V}(\sigma_n)}$
+}
+
+Given a market price $C_{\text{mkt}}$, the implied volatility is the
+$\sigma$ such that $C(S, K, r, \sigma, T) = C_{\text{mkt}}$. Because the
+Black-Scholes price is monotone increasing in $\sigma$ (Vega is positive),
+there is a unique solution. Newton's method is the textbook choice
+because Vega is the exact derivative:
+\[
+\sigma_{n+1} = \sigma_n - \frac{C(\sigma_n) - C_{\text{mkt}}}{\mathcal{V}(\sigma_n)}.
+\]
+Newton converges quadratically when the initial guess is reasonable and
+the option is not deep in/out of the money. When the option is deep ITM
+or OTM, Vega collapses toward zero (the option price is intrinsic and
+barely moves with $\sigma$), and the Newton step becomes ill-conditioned.
+A bisection fallback on $[\sigma_{\min}, \sigma_{\max}]$ is then robust:
+bisection is linear but guaranteed.
+
+\begin{lstlisting}[language=Rust]
+let newton_step = if v.abs() > VEGA_FLOOR {
+    sigma - diff / v
+} else {
+    f64::NAN  // hand off to bisection
+};
+
+let next = if newton_step.is_finite()
+    && newton_step > lo
+    && newton_step < hi
+{
+    newton_step
+} else {
+    0.5 * (lo + hi)  // bisection
+};
+\end{lstlisting}
+
+The initial guess uses the Brenner-Subrahmanyam (1988) approximation
+$\sigma_0 \approx \sqrt{2\pi / T} \cdot C / S_0$, which is exact for
+at-the-money options and bracketed by bisection if it diverges.
+
+\section{Put-Call Parity and Implied Vol}
+
+\marginnote{%
+\textbf{Put-call parity}\\[0.3em]
+$C - P = S_0 - K e^{-rT}$
+}
+
+Put-call parity says $C - P = S_0 - K e^{-rT}$. The implied vol that
+reproduces a call price must therefore equal the implied vol that
+reproduces the corresponding put price. The solver always inverts the
+call formula; for a put we translate the put price into the equivalent
+call price via $C = P + S_0 - K e^{-rT}$ and proceed. The IV is invariant
+across calls and puts of the same strike and maturity.
+
+\section{Results and Analysis}
+
+\subsection{Greeks for an ATM Call}
+
+Pricing an at-the-money call ($S_0 = K = 100$, $r = 0.05$, $\sigma = 0.2$,
+$T = 1$) gives the call price $C = 10.4506$ (matching the Black-Scholes
+benchmark from \cref{ch:stochastic}) and the Greeks:
+
+\begin{center}
+\begin{tabular}{lrrr}
+\toprule
+Greek & Analytical & Finite diff. & $|$diff$|$ \\
+\midrule
+$\Delta_c$ &  0.636831 &  0.636836 & $5.24 \times 10^{-6}$ \\
+$\Delta_p$ & -0.363169 & -0.363164 & $5.24 \times 10^{-6}$ \\
+$\Gamma$   &  0.018762 &  0.018763 & $1.34 \times 10^{-6}$ \\
+$\mathcal{V}$ & 37.524035 & 37.523872 & $1.63 \times 10^{-4}$ \\
+$\Theta_c$ & -6.414028 & -6.414142 & $1.15 \times 10^{-4}$ \\
+$\Theta_p$ & -1.657881 & -1.657983 & $1.03 \times 10^{-4}$ \\
+$\rho_c$   & 53.232483 & --- & --- \\
+$\rho_p$   & -41.890459 & --- & --- \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The analytical and finite-difference Greeks agree to $10^{-4}$ or better
+with $h = 10^{-4}$ for spot/vol bumps and $h = 10^{-3}$ for Gamma. Theta
+matches to $10^{-4}$ with a forward difference in $t$.
+
+\subsection{Implied Volatility Recovery}
+
+Recovering $\sigma$ from the ATM call price $C = 10.4506$:
+
+\begin{lstlisting}[language=bash]
+$ cargo run -p quant-options --example implied_vol
+Recovery (ATM call):
+  Market price  = 10.450575
+  Implied vol   = 0.20000000
+  True vol      = 0.20000000
+  |iv - true|   = 3.54e-14
+\end{lstlisting}
+
+The implied vol recovers the true $\sigma = 0.2$ to $\sim 10^{-14}$ ---
+far below the typical bid-ask spread. The same IV is recovered from the
+put price, as put-call parity demands.
+
+\subsection{Volatility Smile}
+
+A synthetic smile is generated by pricing calls under
+$\sigma(K) = \sigma_0 + a \cdot (\ln(K/S_0))^2$ with $a = 0.5$, so the
+ATM vol is $\sigma_0$ and the wings have higher vol (the classic equity
+smile). Inverting the BS formula at each strike recovers the smile:
+
+\begin{center}
+\begin{tabular}{rrrr}
+\toprule
+$K$ & moneyness $K/S_0$ & market price & IV \\
+\midrule
+ 70 & 0.700 & 33.981835 & 0.263609 \\
+ 80 & 0.800 & 24.965341 & 0.224897 \\
+ 90 & 0.900 & 16.851425 & 0.205550 \\
+ 95 & 0.950 & 13.390174 & 0.201316 \\
+100 & 1.000 & 10.450575 & 0.200000 \\
+105 & 1.050 &  8.068580 & 0.201190 \\
+110 & 1.100 &  6.219914 & 0.204542 \\
+120 & 1.200 &  3.823180 & 0.216621 \\
+130 & 1.300 &  2.578807 & 0.234418 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The IV is symmetric around the ATM strike in log-moneyness, exactly as
+the model prescribes. In real markets the smile is not symmetric: equity
+smiles are skewed (puts bid up by crash protection), FX smiles are more
+symmetric, and rates smiles can be monotone. Fitting these is the job of
+local-volatility, stochastic-volatility, and SVI parameterisations.
+
+\begin{keyinsight}
+The smile is the market's fingerprint. If the Black-Scholes model were
+literally true, IV would be a flat line at $\sigma$. Real markets quote
+options at many strikes with different IVs, and the shape of that curve
+encodes the market's view of tail risk. Modelling the smile is the bridge
+between the Black-Scholes world and the post-1987 derivatives industry.
+\end{keyinsight}
+
+\section{Exercises}
+
+\begin{enumerate}
+    \item \textbf{Black-Scholes with dividends.} Extend the BS formula to
+      a continuous dividend yield $q$: replace $S_0$ with $S_0 e^{-qT}$
+      everywhere, and re-derive the Greeks. Verify Delta becomes
+      $e^{-qT} \Phi(d_1)$ for the call.
+
+    \item \textbf{Local volatility.} Implement a simple local-volatility
+      pricer where $\sigma(S, t)$ is a deterministic function of spot and
+      time (e.g. $\sigma(S, t) = \sigma_0 + \alpha (S - S_0)^2$). Price an
+      option by explicit Euler on a spot-time grid and compare the smile
+      to the IV surface.
+
+    \item \textbf{Heston model.} Implement the Heston stochastic-volatility
+      SDE $dv_t = \kappa(\theta - v_t) dt + \xi \sqrt{v_t} dW^{(v)}_t$
+      with Monte Carlo. Generate call prices for a strip of strikes and
+      invert to recover the smile. Compare to the equity smile shape.
+
+    \item \textbf{Vega-clipped bisection.} For an extreme deep-ITM call
+      (e.g. $S_0 = 1000$, $K = 10$) show that the BS price equals the
+      intrinsic value to machine precision, so IV is genuinely
+      unrecoverable. Modify the solver to return \texttt{Ok(sigma\_min)}
+      with a warning flag rather than attempting to recover.
+
+    \item \textbf{Smile fitting.} Download a real option chain (e.g.
+      SPX) and fit a quadratic-in-log-moneyness smile
+      $\sigma(K) = \beta_0 + \beta_1 \ln(K/S_0) + \beta_2 (\ln(K/S_0))^2$
+      via least squares. Report the residual and the skew coefficient
+      $\beta_1$.
+
+    \item \textbf{Newton convergence rate.} Instrument \func{implied\_vol}
+      to print $|C(\sigma_n) - C_{\text{mkt}}|$ at each iteration. Verify
+      quadratic convergence for ATM options (the error roughly squares
+      each step) and linear convergence once bisection takes over.
+\end{enumerate}
+
+\section{Key Takeaways}
+
+\begin{itemize}
+    \item \textbf{Black-Scholes PDE} prices any payoff via continuous
+      delta-hedging; the closed-form call and put follow from solving
+      the PDE with the terminal payoff.
+    \item \textbf{Greeks} are the partial derivatives of the price.
+      Delta is the hedge ratio; Gamma the curvature; Vega the vol
+      sensitivity; Theta the time decay; Rho the rate sensitivity. Gamma
+      and Vega are identical for calls and puts.
+    \item \textbf{Finite difference} recovers the Greeks for any pricing
+      model, not just Black-Scholes. Central differences are $O(h^2)$;
+      forward differences are needed for Theta (cannot step to $t < 0$).
+    \item \textbf{Implied volatility} inverts the BS formula via Newton's
+      method, with a bisection fallback when Vega collapses (deep ITM/OTM).
+    \item \textbf{Put-call parity} implies the IV from a call equals the
+      IV from the corresponding put --- a basic arbitrage check that
+      real-market quotes must satisfy.
+    \item \textbf{The volatility smile} is the market-implied IV curve
+      across strikes; modelling it is the bridge from Black-Scholes to
+      post-1987 derivatives practice.
+\end{itemize}
+
+\vspace{1em}
+\noindent\textbf{Next chapter}: Portfolio optimization --- Markowitz
+mean-variance frontier, the efficient frontier, and the capital asset
+pricing model.

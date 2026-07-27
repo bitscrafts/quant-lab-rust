@@ -1,6 +1,10 @@
 # Learning Quantitative Finance in Rust
 
 [![CI](https://github.com/bitscrafts/quant-lab-rust/actions/workflows/ci.yml/badge.svg)](https://github.com/bitscrafts/quant-lab-rust/actions/workflows/ci.yml)
+[![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Tests](https://img.shields.io/badge/tests-265%2B-green.svg)](#curriculum)
+[![Phases](https://img.shields.io/badge/phases-12%2F15-blueviolet.svg)](#curriculum)
 
 **[Download the Book (PDF)](book/build/quant-finance-book.pdf)**
 
@@ -11,8 +15,8 @@ A progressive learning journey from basic Kaggle projects to advanced quant rese
 ## Overview
 
 This repository contains:
-- **Rust crates** implementing quantitative finance concepts (155 tests passing)
-- **LaTeX book** documenting the learning journey with mathematical foundations
+- **Rust crates** implementing quantitative finance concepts (237+ tests passing)
+- **LaTeX book** (11 chapters) documenting the learning journey with mathematical foundations
 - **Sample datasets** for running examples immediately
 
 ## Quick Start
@@ -22,18 +26,20 @@ This repository contains:
 git clone https://github.com/bitscrafts/quant-lab-rust.git
 cd quant-lab-rust
 
-# Run all tests (155 tests)
+# Run all tests (237+ tests)
 cargo test
 
-# Run examples
+# Run examples (selection)
 cargo run -p qf-01-fraud --example fraud_analysis
-cargo run -p qf-02-loan --example loan_analysis
-cargo run -p qf-03-stocks --example stock_analysis
 cargo run -p qf-04-returns --example returns_analysis
-cargo run -p qf-05-backtest --example backtest_demo
 cargo run -p quant-core --example fat_tails
 cargo run -p quant-timeseries --example stationarity
-cargo run -p quant-timeseries --example ffd_demo
+cargo run -p quant-vol --example vol_demo
+cargo run -p quant-stochastic --example mc_pricing
+cargo run -p quant-options --example greeks
+cargo run -p quant-options --example implied_vol
+cargo run -p quant-portfolio --example frontier
+cargo run -p quant-portfolio --example capm
 ```
 
 ## Project Structure
@@ -50,11 +56,15 @@ quant-lab-rust/
 │   ├── qf-04-returns/     # Ch04: Returns and risk metrics
 │   ├── qf-05-backtest/    # Ch05: Backtesting strategies
 │   ├── quant-core/        # Ch06: Moments, RNG, GBM
-│   └── quant-timeseries/  # Ch07: OLS, ACF, ADF, FFD
+│   ├── quant-timeseries/  # Ch07: OLS, ACF, ADF, FFD
+│   ├── quant-vol/         # Ch08: EWMA, ARCH, GARCH
+│   ├── quant-stochastic/  # Ch09: Brownian motion, Monte Carlo
+│   ├── quant-options/     # Ch10: Black-Scholes, Greeks, IV
+│   └── quant-portfolio/   # Ch11: Markowitz, efficient frontier, CAPM
 ├── data/                  # Sample datasets (bundled)
 └── book/                  # LaTeX book source
     ├── main.tex           # Main document
-    ├── chapters/          # Chapter files (ch00-ch07)
+    ├── chapters/          # Chapter files (ch00-ch11)
     ├── references.bib     # Bibliography
     ├── kaobook/           # LaTeX template
     └── build/             # Compiled PDF
@@ -99,29 +109,38 @@ pdflatex -output-directory=build main.tex
 | 4 | Returns | `qf-04-returns` | 25 | Simple/log returns, volatility, Sharpe, Sortino |
 | 5 | Backtesting | `qf-05-backtest` | 20 | SMA crossover, transaction costs, equity curve |
 
-### Part III: Quantitative Methods (Advanced) - IN PROGRESS
+### Part III: Quantitative Methods (Advanced) - COMPLETE
 
 | Ch | Title | Crate | Tests | Key Concepts |
 |----|-------|-------|-------|--------------|
 | 6 | Foundations | `quant-core` | 17 | Moments, skewness, kurtosis, XorShift64, GBM |
 | 7 | Time Series | `quant-timeseries` | 18 | OLS, ACF, ADF test, fractional differentiation |
-| 8 | Volatility | `quant-vol` | - | EWMA, ARCH, GARCH (coming next) |
-| 9 | Stochastic | `quant-stochastic` | - | Brownian motion, Monte Carlo |
+| 8 | Volatility | `quant-vol` | 17 | EWMA, ARCH, GARCH, Nelder-Mead MLE |
+| 9 | Stochastic | `quant-stochastic` | 16 | Brownian motion, GBM, Poisson, Monte Carlo |
 
-### Part IV: Derivatives & Portfolio (Expert)
+### Part IV: Derivatives & Portfolio (Expert) - IN PROGRESS
 
-| Ch | Title | Crate | Key Concepts |
-|----|-------|-------|--------------|
-| 10 | Options | `quant-options` | Black-Scholes, Greeks, IV |
-| 11 | Portfolio | `quant-portfolio` | Markowitz, efficient frontier |
-| 12 | Factors | `quant-factors` | PCA, Fama-French |
+| Ch | Title | Crate | Tests | Key Concepts |
+|----|-------|-------|-------|--------------|
+| 10 | Options | `quant-options` | 17 | Black-Scholes, Greeks, implied volatility |
+| 11 | Portfolio | `quant-portfolio` | 47 | Markowitz, efficient frontier, tangency, CAPM, VaR/CVaR |
+| 12 | Factors | `quant-factors` | - | PCA, Fama-French (next) |
 
 ### Part V: Advanced (Expert)
 
-| Ch | Title | Crate | Key Concepts |
-|----|-------|-------|--------------|
-| 13 | Microstructure | `quant-microstructure` | Limit order book, order flow |
-| 14 | AFML Bridge | `quant-backtest` | Triple-barrier, purged CV |
+| Ch | Title | Crate | Tests | Key Concepts |
+|----|-------|-------|-------|--------------|
+| 13 | Microstructure | `quant-microstructure` | - | Limit order book, order flow |
+| 14 | AFML Bridge | `quant-backtest` | - | Triple-barrier, purged CV |
+
+### Final: Unified Library
+
+| Phase | Crate | Description |
+|-------|-------|-------------|
+| 15 | **`quant-lib`** | Consolidate all crates into single unified library |
+
+The final target is `quant-lib` — a single crate re-exporting all functionality
+from Phases 6-14 under a unified namespace with feature flags for optional modules.
 
 ## Design Philosophy
 
@@ -138,6 +157,8 @@ All code is designed to evolve into a reusable `quant-lib` library. Before writi
 - `Strategy` — Trading signal generation
 - `Moments` — Statistical moments computation
 - `Distribution` — Random sampling
+- `Allocator` — Portfolio construction rules
+- `RiskModel` — Tail risk estimators (VaR, CVaR)
 
 ### Hand-Rolled Math (Phase 6+)
 
@@ -185,17 +206,41 @@ Fractional Diff (d=0.4):
   ACF(1):         0.6878 (memory preserved)
 ```
 
+### Monte Carlo Pricing (quant-stochastic)
+
+```
+Black-Scholes call price (analytical): 10.4506
+Monte Carlo convergence:
+  N=1000:    10.52 (SE=0.32)
+  N=10000:   10.47 (SE=0.10)
+  N=100000:  10.45 (SE=0.03)
+```
+
+### Efficient Frontier (quant-portfolio)
+
+```
+Two-asset frontier (uncorrelated):
+  Global min-variance: w_A=0.6923, sigma=0.1664
+  Tangency (max Sharpe): w_A=0.8571, Sharpe=0.4123
+  CML: mu = 0.02 + 0.4123 * sigma
+
+CAPM regression (synthetic):
+  beta_hat = 1.175 (true 1.20)
+  alpha    = -0.0002 (on SML)
+```
+
 ## Development
 
 ### Testing
 
 ```bash
-# Run all tests (155 total)
+# Run all tests (237+ total)
 cargo test
 
 # Run tests for specific crate
 cargo test -p quant-core
-cargo test -p quant-timeseries
+cargo test -p quant-portfolio
+cargo test -p quant-options
 ```
 
 ### Linting

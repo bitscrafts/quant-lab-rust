@@ -10,6 +10,11 @@ members = [
     "crates/quant-core",
     "crates/quant-timeseries",
     "crates/quant-vol",
+    "crates/quant-stochastic",
+    "crates/quant-options",
+    "crates/quant-portfolio",
+    "crates/quant-factors",
+    "crates/quant-microstructure",
 ]
 
 [workspace.package]

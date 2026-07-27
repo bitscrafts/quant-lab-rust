@@ -103,22 +103,22 @@ are bundled in the book directory:
 |----|-------|------|-------|-------|--------|
 | 06 | Foundations: Moments and Fat Tails | [Phase 6](../spec.md#phase-6-foundations--moments-and-fat-tails) | `quant-core` | `chapters/ch06.tex` | **done** |
 | 07 | Time Series: Stationarity | [Phase 7](../spec.md#phase-7-time-series--stationarity-and-fractional-differentiation) | `quant-timeseries` | `chapters/ch07.tex` | **done** |
-| 08 | Volatility Models | Phase 8 | `quant-vol` | `chapters/ch08.tex` | planned |
-| 09 | Stochastic Processes | Phase 9 | `quant-stochastic` | `chapters/ch09.tex` | planned |
+| 08 | Volatility Models | Phase 8 | `quant-vol` | `chapters/ch08.tex` | **done** |
+| 09 | Stochastic Processes | Phase 9 | `quant-stochastic` | `chapters/ch09.tex` | **done** |
 
 ## Part IV: Derivatives and Portfolio
 
 | Ch | Title | Spec | Crate | LaTeX | Status |
 |----|-------|------|-------|-------|--------|
-| 10 | Options Pricing | Phase 10 | `quant-options` | `chapters/ch10.tex` | planned |
-| 11 | Portfolio Optimization | Phase 11 | `quant-portfolio` | `chapters/ch11.tex` | planned |
-| 12 | Factor Models | Phase 12 | `quant-factors` | `chapters/ch12.tex` | planned |
+| 10 | Options Pricing | Phase 10 | `quant-options` | `chapters/ch10.tex` | **done** |
+| 11 | Portfolio Optimization | Phase 11 | `quant-portfolio` | `chapters/ch11.tex` | **done** |
+| 12 | Factor Models | Phase 12 | `quant-factors` | `chapters/ch12.tex` | **done** |
 
 ## Part V: Advanced Topics
 
 | Ch | Title | Spec | Crate | LaTeX | Status |
 |----|-------|------|-------|-------|--------|
-| 13 | Market Microstructure | Phase 13 | `quant-microstructure` | `chapters/ch13.tex` | planned |
+| 13 | Market Microstructure | Phase 13 | `quant-microstructure` | `chapters/ch13.tex` | **done** |
 | 14 | AFML: From Research to Production | Phase 14 | `quant-backtest` | `chapters/ch14.tex` | planned |
 
 ## Appendices

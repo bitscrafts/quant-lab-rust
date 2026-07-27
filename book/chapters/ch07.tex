@@ -1,3 +1,12 @@
+\chapter{Time Series Analysis}
+\label{ch:timeseries}
+
+\begin{companioncode}{quant-timeseries}
+Code: \texttt{crates/quant-timeseries/}\\
+Dependencies: \crate{quant-core}, \crate{thiserror}\\
+Run: \texttt{cargo run -p quant-timeseries --example stationarity}
+\end{companioncode}
+
 \section{Learning Objectives}
 
 Most financial time series are non-stationary: prices wander, volatilities
@@ -287,6 +296,16 @@ pub fn find_min_d(data: &[f64], threshold: f64, tolerance: f64)
 
 \section{The Stationarity-Memory Tradeoff in Action}
 
+\marginnote{%
+\textbf{The tradeoff in one line}\\[0.3em]
+Full differentiation ($d=1$) makes the series stationary but erases
+all memory. No memory means no signal to model. Fractional
+differentiation ($d=0.4$) keeps enough memory to predict while being
+stationary enough to satisfy the ADF test. This tradeoff is the core
+contribution of fractional differentiation to feature engineering for
+financial time series.
+}
+
 \begin{lstlisting}[language=bash]
 $ cargo run -p quant-timeseries --example stationarity
 ==============================
@@ -352,3 +371,24 @@ than necessary.
       selection and check whether the stationarity conclusion changes for
       your test series.
 \end{enumerate}
+
+\section{Key Takeaways}
+
+\begin{itemize}
+    \item \textbf{Stationarity} is required for valid statistical inference;
+      most price series are non-stationary
+    \item \textbf{OLS} fits the normal equations via Gaussian elimination with
+      partial pivoting
+    \item \textbf{ACF} reveals memory structure: random walks have slowly decaying
+      ACF, white noise has zero ACF after lag 0
+    \item \textbf{ADF test} rejects the unit-root null when the t-statistic is
+      below the MacKinnon critical value ($-2.86$ at 5\%)
+    \item \textbf{Fractional differentiation} achieves stationarity while
+      preserving memory---the sweet spot for ML features
+    \item \textbf{Minimum $d$}: binary search finds the smallest differencing
+      order that passes the ADF test
+\end{itemize}
+
+\vspace{1em}
+\noindent\textbf{Next chapter}: Volatility models---EWMA, ARCH, and GARCH for
+time-varying conditional variance.

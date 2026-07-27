@@ -61,6 +61,7 @@
 
 % TikZ figure path (for \input{figures/...})
 \makeatletter
+\@ifundefined{input@path}{\def\input@path{}}{}
 \g@addto@macro\input@path{{figures/}}
 \makeatother
 
@@ -92,7 +93,7 @@
 \newcommand{\logreturn}{\ln\left(\frac{P_t}{P_{t-1}}\right)}
 
 % Moments
-\newcommand{\skew}{\text{Skew}}
+\newcommand{\skewness}{\text{Skew}}
 \newcommand{\kurt}{\text{Kurt}}
 \newcommand{\excesskurt}{\text{ExcessKurt}}
 
@@ -377,8 +378,6 @@ cargo run -p qf-01-fraud --example fraud_analysis
 
 \input{chapters/ch04}
 
-\chapter{Your First Backtest}
-\label{ch:backtest-intro}
 \input{chapters/ch05}
 
 %----------------------------------------------------------------------------------------
@@ -389,23 +388,13 @@ cargo run -p qf-01-fraud --example fraud_analysis
 \addpart{Quantitative Methods}
 \pagelayout{margin}
 
-\chapter{Foundations: Moments and Fat Tails}
-\label{ch:moments}
 \input{chapters/ch06}
 
-\chapter{Time Series: Stationarity and Fractional Differentiation}
-\label{ch:timeseries}
 \input{chapters/ch07}
 
-\chapter{Volatility Models: EWMA, ARCH, GARCH}
-\label{ch:volatility}
-% \input{chapters/ch08}
-\textit{Chapter content pending --- Phase 8 implementation.}
+\input{chapters/ch08}
 
-\chapter{Stochastic Processes and Monte Carlo}
-\label{ch:stochastic}
-% \input{chapters/ch09}
-\textit{Chapter content pending --- Phase 9 implementation.}
+\input{chapters/ch09}
 
 %----------------------------------------------------------------------------------------
 % PART IV: DERIVATIVES AND PORTFOLIO (Expert)
@@ -415,20 +404,11 @@ cargo run -p qf-01-fraud --example fraud_analysis
 \addpart{Derivatives and Portfolio Theory}
 \pagelayout{margin}
 
-\chapter{Options Pricing: Black-Scholes and Beyond}
-\label{ch:options}
-% \input{chapters/ch10}
-\textit{Chapter content pending --- Phase 10 implementation.}
+\input{chapters/ch10}
 
-\chapter{Portfolio Optimization: Markowitz and Beyond}
-\label{ch:portfolio}
-% \input{chapters/ch11}
-\textit{Chapter content pending --- Phase 11 implementation.}
+\input{chapters/ch11}
 
-\chapter{Factor Models and PCA}
-\label{ch:factors}
-% \input{chapters/ch12}
-\textit{Chapter content pending --- Phase 12 implementation.}
+\input{chapters/ch12}
 
 %----------------------------------------------------------------------------------------
 % PART V: ADVANCED TOPICS (Expert)
@@ -438,10 +418,7 @@ cargo run -p qf-01-fraud --example fraud_analysis
 \addpart{Advanced Topics}
 \pagelayout{margin}
 
-\chapter{Market Microstructure}
-\label{ch:microstructure}
-% \input{chapters/ch13}
-\textit{Chapter content pending --- Phase 13 implementation.}
+\input{chapters/ch13}
 
 \chapter{AFML: From Research to Production}
 \label{ch:afml}

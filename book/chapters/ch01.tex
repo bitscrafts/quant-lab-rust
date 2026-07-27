@@ -167,6 +167,13 @@ impl ZScoreDetector {
     }
 
     pub fn fit(&mut self, transactions: &[Transaction]) {
+        if transactions.is_empty() { return; }
+        let num_features = transactions[0].features.len();
+
+        // Initialise mean/std accumulators to zero
+        self.feature_means = vec![0.0; num_features];
+        self.feature_stds = vec![0.0; num_features];
+
         // Compute mean for each feature
         for tx in transactions {
             for (i, &value) in tx.features.iter().enumerate() {
@@ -305,7 +312,7 @@ pub fn evaluate(
 \section{Toward a Trait-Based Architecture}
 
 \begin{keyinsight}
-This implementation will evolve into \crate{quant-lib}. Before writing any struct, we ask: \textbf{what trait should this implement?}
+This implementation will evolve into \crate{quant-lab}. Before writing any struct, we ask: \textbf{what trait should this implement?}
 \end{keyinsight}
 
 \marginnote{%

@@ -1,6 +1,15 @@
+\chapter{Foundations: Moments, RNG, and Simulation}
+\label{ch:moments}
+
+\begin{companioncode}{quant-core}
+Code: \texttt{crates/quant-core/}\\
+Dependencies: \crate{thiserror}\\
+Run: \texttt{cargo run -p quant-core --example fat\_tails}
+\end{companioncode}
+
 \section{Learning Objectives}
 
-This chapter begins the advanced track. From here on, all math is hand-rolled —
+This chapter begins the advanced track. From here on, all math is hand-rolled ---
 no \texttt{rand}, \texttt{nalgebra}, or \texttt{statrs}. After completing it
 you can:
 
@@ -62,6 +71,14 @@ function can assume finite inputs and skip defensive checks. This is the
 ``parse, don't validate'' pattern applied to numeric data.
 
 \section{Returns, Again}
+
+\marginnote{%
+\textbf{Why re-implement?}\\[0.3em]
+\crate{quant-core} is the foundation every other crate builds on. It
+must be self-contained: no circular dep on \crate{qf-04-returns}. The
+formulas are two lines each, so the cost of duplication is trivial
+compared to the architectural benefit of a clean dependency DAG.
+}
 
 Simple and log returns were introduced in \cref{ch:returns}. We re-implement
 them here so \texttt{quant-core} is self-contained:
@@ -308,6 +325,24 @@ should reproduce the risk-free growth exactly, with no RNG dependence.
 
 \section{Fat Tails}
 
+\marginnote{%
+\textbf{Why fat tails matter}\\[0.3em]
+Gaussian returns underestimate the probability of large moves by
+orders of magnitude. A $5\sigma$ day is a once-a-millennium event
+under $\mathcal{N}$; it happens every few years in real markets. The
+excess kurtosis of $+74$ on the synthetic fat-tailed sample is
+extreme, but real equity returns routinely show $+4$ to $+10$.
+}
+
+\marginnote{%
+\textbf{Skewness sign}\\[0.3em]
+Negative skewness means the left tail is heavier than the right ---
+big down moves are more common than big up moves. Equity indices
+typically show negative skewness around $-0.3$ to $-1.0$. The
+asymmetry matters: option prices, VaR, and optimal leverage all
+depend on it.
+}
+
 \begin{lstlisting}[language=bash]
 $ cargo run -p quant-core --example fat_tails
 1. Pure Gaussian (10k N(0,1) draws)
@@ -366,3 +401,23 @@ smile --- the market knows the tails are fatter than Gaussian allows.
       $S_t$ by $e^{J}$ where $J \sim N(\mu_J, \sigma_J^2)$. How does the
       excess kurtosis of terminal prices change as $\lambda$ grows?
 \end{enumerate}
+
+\section{Key Takeaways}
+
+\begin{itemize}
+    \item \textbf{PriceSeries} validates inputs at construction---``parse, don't
+      validate''
+    \item \textbf{Moments}: mean, variance, skewness, and excess kurtosis
+      characterise distributions
+    \item \textbf{Rolling windows} apply any aggregation over sliding slices
+    \item \textbf{XorShift64*} is a fast, deterministic PRNG good enough for
+      Monte Carlo
+    \item \textbf{Box-Muller} transforms uniforms to standard normals
+    \item \textbf{GBM} simulates price paths via the exact solution to the SDE
+    \item \textbf{Fat tails}: real returns have positive excess kurtosis---Gaussian
+      models underestimate tail risk
+\end{itemize}
+
+\vspace{1em}
+\noindent\textbf{Next chapter}: Time series analysis---OLS regression, ACF, the
+ADF test, and fractional differentiation.

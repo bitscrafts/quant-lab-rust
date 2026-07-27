@@ -1,3 +1,12 @@
+\chapter{Backtesting Strategies}
+\label{ch:backtest}
+
+\begin{companioncode}{qf-05-backtest}
+Code: \texttt{crates/qf-05-backtest/}\\
+Dependencies: \crate{qf-common}, \crate{qf-03-stocks}, \crate{qf-04-returns}\\
+Run: \texttt{cargo run -p qf-05-backtest --example backtest\_demo}
+\end{companioncode}
+
 \section{Learning Objectives}
 
 This chapter introduces the mechanics of evaluating a trading strategy on
@@ -48,6 +57,14 @@ Three assumptions are implicit and worth naming:
 \end{enumerate}
 
 \section{Signals and Positions}
+
+\marginnote{%
+\textbf{Signal vs position}\\[0.3em]
+A signal is an \emph{instruction} (what to do this bar); a position is
+a \emph{state} (what we are currently holding). The engine applies the
+signal to update the position. Decoupling them lets you replay the
+same signal stream under different execution models.
+}
 
 A \emph{signal} is a discrete instruction for the current bar. We use three:
 
@@ -127,10 +144,18 @@ impl Strategy for SmaCrossover {
     fn signal(&self, data: &[Ohlcv], index: usize) -> Signal {
         if index < self.long_period { return Signal::Hold; }
 
-        let short_now = sma_at(data, index, self.short_period)?;
-        let long_now  = sma_at(data, index, self.long_period)?;
-        let short_prev = sma_at(data, index - 1, self.short_period)?;
-        let long_prev  = sma_at(data, index - 1, self.long_period)?;
+        let short_now = match sma_at(data, index, self.short_period) {
+            Some(v) => v, None => return Signal::Hold,
+        };
+        let long_now = match sma_at(data, index, self.long_period) {
+            Some(v) => v, None => return Signal::Hold,
+        };
+        let short_prev = match sma_at(data, index - 1, self.short_period) {
+            Some(v) => v, None => return Signal::Hold,
+        };
+        let long_prev = match sma_at(data, index - 1, self.long_period) {
+            Some(v) => v, None => return Signal::Hold,
+        };
 
         let crossed_up   = short_prev <= long_prev  && short_now >  long_now;
         let crossed_down = short_prev >= long_prev  && short_now <  long_now;
@@ -182,6 +207,14 @@ cash when flat. The per-bar simple returns of the equity curve become the
 
 \section{Performance Evaluation}
 
+\marginnote{%
+\textbf{Why reuse \crate{qf-04-returns}?}\\[0.3em]
+Sharpe, Sortino, and max drawdown are return-level statistics --- they
+do not care how the returns were generated. Once the backtest produces
+a daily return series, evaluation is identical to computing the same
+metrics on a buy-and-hold benchmark. Code reuse follows the math.
+}
+
 \texttt{BacktestResult} delegates to \texttt{qf-04-returns} for the four
 headline metrics:
 
@@ -212,6 +245,14 @@ this exposure pattern automatically.
 
 \section{Buy-and-Hold Benchmark}
 
+\marginnote{%
+\textbf{Always compare to buy-and-hold}\\[0.3em]
+An active strategy that returns $10\%$ looks good until you realise
+the underlying asset returned $15\%$ over the same period. The
+buy-and-hold benchmark is the floor any active strategy must beat
+\emph{after} costs. If it does not, the activity added no value.
+}
+
 Every active strategy must be compared against the simplest alternative: buy
 on the first bar and hold forever. \texttt{BuyAndHold} is a two-line strategy:
 
@@ -229,6 +270,15 @@ component is adding noise and cost, not value. The benchmark also lets you
 decompose returns: alpha (skill) vs beta (market exposure).
 
 \section{Common Pitfalls}
+
+\marginnote{%
+\textbf{The two cardinal sins}\\[0.3em]
+\emph{Overfitting} and \emph{look-ahead bias} are the two ways a
+backtest lies to you. Overfitting makes the past look good; look-ahead
+bias makes the future knowable. Both produce strategies that fail
+miserably in live trading. Treat any backtest Sharpe $> 2$ with deep
+suspicion until both are ruled out.
+}
 
 \begin{description}
     \item[Overfitting] Tuning the SMA periods $(S, L)$ to maximise in-sample
@@ -304,3 +354,23 @@ backtest.
       out-of-sample. How much does Sharpe degrade from in-sample to
       out-of-sample? This is the simplest walk-forward analysis.
 \end{enumerate}
+
+\section{Key Takeaways}
+
+\begin{itemize}
+    \item \textbf{Backtesting} is a simulation, not a prediction---it tells you
+      how a strategy \emph{would have} performed
+    \item \textbf{Signals vs positions}: signals are intentions, positions are
+      state; the engine translates one to the other
+    \item \textbf{Transaction costs} erode returns and must be modelled
+      explicitly
+    \item \textbf{SMA crossover} is a trend-following strategy that loses in
+      choppy markets
+    \item \textbf{Buy-and-hold} is the benchmark every active strategy must beat
+    \item \textbf{Pitfalls}: overfitting, look-ahead bias, and survivorship bias
+      are the classic backtest traps
+\end{itemize}
+
+\vspace{1em}
+\noindent\textbf{Next chapter}: Foundations---moments, hand-rolled RNG, and
+geometric Brownian motion simulation.

@@ -1,0 +1,601 @@
+\chapter{Volatility Models: EWMA, ARCH, and GARCH}
+\label{ch:volatility}
+
+\begin{companioncode}{quant-vol}
+Code: \texttt{crates/quant-vol/}\\
+Dependencies: \crate{quant-core}, \crate{thiserror}\\
+Run: \texttt{cargo run -p quant-vol --example vol\_demo}
+\end{companioncode}
+
+\section{Learning Objectives}
+
+Financial returns are not Gaussian --- their variance changes over time, and
+large moves cluster. A constant-volatility model underestimates risk in
+turbulent periods and overestimates it in calm ones. After completing this
+chapter you can:
+
+\begin{itemize}
+    \item Describe the stylized facts of financial return volatility:
+      clustering, fat tails, mean reversion, and slow decay of autocorrelation
+      in squared returns
+    \item Derive the exponentially weighted moving average (EWMA) recursion
+      and justify the RiskMetrics $\lambda = 0.94$ choice for daily data
+    \item Specify the ARCH($q$) model of Engle (1982) and fit it by Gaussian
+      maximum likelihood with a hand-rolled optimiser
+    \item Specify the GARCH($p, q$) model of Bollerslev (1986), state the
+      covariance-stationarity condition, and interpret persistence
+    \item Compute the long-run variance and the half-life of volatility shocks
+    \item Fit GARCH(1,1) to simulated and clustered-volatility data and show
+      that it beats constant-volatility models in log-likelihood
+\end{itemize}
+
+\begin{keyinsight}
+Volatility clustering --- large moves follow large moves, calm follows calm
+--- is the single most robust empirical regularity in financial returns. A
+Gaussian return with constant variance cannot reproduce it. ARCH and GARCH
+make the conditional variance a function of past squared returns, so a large
+shock raises the variance of the next period. This one feature explains most
+of the improvement of GARCH over Gaussian models for risk forecasting.
+\end{keyinsight}
+
+\section{Stylized Facts of Volatility}
+
+\marginnote{%
+\textbf{Volatility clustering}\\[0.3em]
+$\Corr(r_t^2, r_{t-k}^2) > 0$ for many lags $k$, while $\Corr(r_t, r_{t-k})
+\approx 0$. The ACF of returns is flat; the ACF of \emph{squared} returns
+decays slowly.
+}
+
+Empirical daily returns exhibit four robust features that any realistic
+volatility model must reproduce:
+
+\begin{enumerate}
+    \item \textbf{Volatility clustering.} The autocorrelation of $r_t^2$ is
+      positive and decays slowly --- much more slowly than the autocorrelation
+      of $r_t$, which is essentially zero after one or two lags.
+    \item \textbf{Fat tails.} The unconditional distribution of returns has
+      excess kurtosis: large moves occur more often than a Gaussian with the
+      same variance would predict.
+    \item \textbf{Mean reversion.} Volatility cannot grow without bound; it
+      reverts toward a long-run level.
+    \item \textbf{Asymmetry (leverage).} Negative returns tend to raise
+      volatility more than positive returns of the same magnitude. Plain
+      ARCH/GARCH do not capture this; GJR-GARCH and EGARCH do.
+\end{enumerate}
+
+\section{EWMA: Exponentially Weighted Moving Average}
+
+\marginnote{%
+\textbf{EWMA recursion}\\[0.3em]
+$\sigma_t^2 = \lambda \sigma_{t-1}^2 + (1 - \lambda) r_{t-1}^2$\\[0.3em]
+with $\sigma_0^2 = r_0^2$. RiskMetrics uses $\lambda = 0.94$ for daily data
+and $\lambda = 0.97$ for monthly.
+}
+
+The simplest model that responds to clustering is the exponentially weighted
+moving average:
+\[
+\sigma_t^2 = \lambda \sigma_{t-1}^2 + (1 - \lambda) r_{t-1}^2,
+\qquad \lambda \in [0, 1].
+\]
+Each period's variance is a convex combination of the previous variance and
+the previous squared return. The parameter $\lambda$ controls the memory: a
+value close to $1$ makes the variance slow-moving; a value close to $0$
+makes it track the last squared return.
+
+\subsection{Boundary cases}
+
+\begin{itemize}
+    \item $\lambda = 0$: $\sigma_t^2 = r_{t-1}^2$ --- the variance is just the
+      lagged squared return. No smoothing.
+    \item $\lambda = 1$: $\sigma_t^2 = \sigma_{t-1}^2$ --- the variance is
+      constant at its initial value $\sigma_0^2 = r_0^2$. No adaptation.
+    \item $\lambda = 0.94$ (RiskMetrics daily): a single shock's influence
+      decays geometrically. After $k$ periods without further shocks, the
+      variance is multiplied by $\lambda^k$.
+\end{itemize}
+
+\subsection{Unrolling the recursion}
+
+Substituting repeatedly:
+\[
+\sigma_t^2 = (1 - \lambda) \sum_{k=1}^{t} \lambda^{k-1} r_{t-k}^2
+           + \lambda^t \sigma_0^2.
+\]
+The weights on past squared returns decay geometrically with rate $\lambda$.
+For long series the $\lambda^t \sigma_0^2$ term vanishes and the weights sum
+to $(1 - \lambda) / (1 - \lambda) = 1$, so $\sigma_t^2$ is a proper weighted
+average of past squared returns.
+
+\begin{lstlisting}[language=Rust]
+pub fn ewma_vol(returns: &[f64], lambda: f64) -> Result<Vec<f64>, VolError> {
+    if !(0.0..=1.0).contains(&lambda) {
+        return Err(VolError::InvalidParam(...));
+    }
+    if returns.is_empty() {
+        return Err(VolError::InsufficientData { required: 1, actual: 0 });
+    }
+    let mut sigma2 = vec![0.0_f64; returns.len()];
+    sigma2[0] = returns[0] * returns[0];
+    for t in 1..returns.len() {
+        sigma2[t] = lambda * sigma2[t - 1]
+                  + (1.0 - lambda) * returns[t - 1] * returns[t - 1];
+    }
+    Ok(sigma2)
+}
+\end{lstlisting}
+
+\section{ARCH: Autoregressive Conditional Heteroskedasticity}
+
+\marginnote{%
+\textbf{ARCH($q$) of Engle (1982)}\\[0.3em]
+$\sigma_t^2 = \omega + \sum_{i=1}^q \alpha_i r_{t-i}^2$\\[0.3em]
+with $\omega > 0$, $\alpha_i \geq 0$, and $\sum \alpha_i < 1$ for
+stationarity.
+}
+
+Engle's ARCH model makes the conditional variance an explicit linear function
+of the past $q$ squared returns:
+\[
+\sigma_t^2 = \omega + \sum_{i=1}^q \alpha_i r_{t-i}^2.
+\]
+The coefficients are constrained to be non-negative (otherwise the variance
+could go negative) and $\sum \alpha_i < 1$ ensures the unconditional variance
+$\omega / (1 - \sum \alpha_i)$ is finite.
+
+ARCH captures clustering directly: a large $r_{t-1}^2$ raises $\sigma_t^2$ by
+$\alpha_1 r_{t-1}^2$, which in turn makes a large $r_t$ more likely, which
+raises $\sigma_{t+1}^2$, and so on. The effect dies out geometrically when
+shocks stop arriving.
+
+\subsection{Gaussian log-likelihood}
+
+Assuming $r_t \mid \mathcal{F}_{t-1} \sim \Normal(0, \sigma_t^2)$, the
+conditional density is
+\[
+f(r_t \mid \mathcal{F}_{t-1}) = \frac{1}{\sqrt{2\pi\sigma_t^2}}
+  \exp\!\left(-\frac{r_t^2}{2\sigma_t^2}\right),
+\]
+so the Gaussian log-likelihood is
+\[
+\mathcal{L}(\theta) = -\frac{1}{2} \sum_t
+  \left[ \log(2\pi) + \log\sigma_t^2(\theta) + \frac{r_t^2}{\sigma_t^2(\theta)} \right].
+\]
+The MLE maximises $\mathcal{L}$ over $\theta = (\omega, \alpha_1, \ldots,
+\alpha_q)$. Because $\sigma_t^2$ is a deterministic function of $\theta$ and
+the data, the score and Hessian can be derived in closed form, but we will
+not need them: a derivative-free optimiser is enough.
+
+\begin{warning}
+The Gaussian log-likelihood is \emph{not} bounded above by zero. When
+$\sigma_t^2$ is small and $r_t^2 / \sigma_t^2$ is also small, each term
+$-0.5[\log(2\pi) + \log\sigma_t^2 + r_t^2/\sigma_t^2]$ can be positive. The
+only universal constraint is that $\mathcal{L}$ is finite when all
+$\sigma_t^2 > 0$.
+\end{warning}
+
+\begin{lstlisting}[language=Rust]
+#[derive(Debug, Clone)]
+pub struct ArchModel {
+    pub omega: f64,       // Constant term (omega > 0)
+    pub alphas: Vec<f64>, // ARCH coefficients (alpha_i >= 0)
+}
+
+impl ArchModel {
+    pub fn conditional_variances(&self, returns: &[f64]) -> Vec<f64> {
+        let n = returns.len();
+        let q = self.alphas.len();
+        let mut sigma2 = vec![0.0_f64; n];
+        for t in 0..n {
+            let mut s = self.omega;
+            for i in 0..q {
+                if t > i {
+                    s += self.alphas[i] * returns[t - 1 - i].powi(2);
+                }
+            }
+            sigma2[t] = s.max(1e-300);
+        }
+        sigma2
+    }
+
+    pub fn log_likelihood(&self, returns: &[f64]) -> f64 {
+        let sigma2 = self.conditional_variances(returns);
+        let mut ll = 0.0_f64;
+        for (t, &r) in returns.iter().enumerate() {
+            let s2 = sigma2[t];
+            ll -= 0.5 * (LN_2PI + s2.ln() + r * r / s2);
+        }
+        ll
+    }
+}
+\end{lstlisting}
+
+\section{GARCH: Generalised ARCH}
+
+\marginnote{%
+\textbf{GARCH($p, q$) of Bollerslev (1986)}\\[0.3em]
+$\sigma_t^2 = \omega + \sum_{i=1}^q \alpha_i r_{t-i}^2 + \sum_{j=1}^p
+\beta_j \sigma_{t-j}^2$\\[0.3em]
+with $\omega > 0$, $\alpha_i, \beta_j \geq 0$, and $\sum\alpha_i + \sum\beta_j
+< 1$ for covariance stationarity.
+}
+
+Bollerslev's GARCH adds lagged conditional variances to the ARCH recursion:
+\[
+\sigma_t^2 = \omega + \sum_{i=1}^q \alpha_i r_{t-i}^2
+                   + \sum_{j=1}^p \beta_j \sigma_{t-j}^2.
+\]
+The GARCH terms $\beta_j \sigma_{t-j}^2$ propagate current volatility forward,
+so shocks have a longer, smoother effect than in ARCH. In practice
+GARCH(1,1) --- one ARCH term and one GARCH term --- is the workhorse: it fits
+most daily return series well with only three parameters.
+
+\begin{lstlisting}[language=Rust]
+#[derive(Debug, Clone)]
+pub struct GarchModel {
+    pub omega: f64,       // Constant term (omega > 0)
+    pub alphas: Vec<f64>, // ARCH coefficients, length q
+    pub betas: Vec<f64>,  // GARCH coefficients, length p
+}
+
+impl GarchModel {
+    pub fn conditional_variances(&self, returns: &[f64]) -> Vec<f64> {
+        let n = returns.len();
+        let (q, p) = (self.alphas.len(), self.betas.len());
+        let warmup = p.max(q);
+        let init_var = sample_variance(returns);
+        let mut sigma2 = vec![init_var; n];
+        for t in warmup..n {
+            let mut s = self.omega;
+            for i in 0..q {
+                s += self.alphas[i] * returns[t - 1 - i].powi(2);
+            }
+            for j in 0..p {
+                s += self.betas[j] * sigma2[t - 1 - j];
+            }
+            sigma2[t] = s.clamp(1e-300, 1e15);
+        }
+        sigma2
+    }
+
+    pub fn persistence(&self) -> f64 {
+        self.alphas.iter().sum::<f64>() + self.betas.iter().sum::<f64>()
+    }
+
+    pub fn long_run_variance(&self) -> f64 {
+        let pers = self.persistence();
+        if pers < 1.0 { self.omega / (1.0 - pers) } else { f64::INFINITY }
+    }
+
+    pub fn half_life(&self) -> f64 {
+        let pers = self.persistence();
+        if pers > 0.0 && pers < 1.0 { 0.5_f64.ln() / pers.ln() }
+        else { f64::INFINITY }
+    }
+}
+\end{lstlisting}
+
+\subsection{Persistence and stationarity}
+
+\marginnote{%
+\textbf{Persistence}\\[0.3em]
+$\rho = \sum_i \alpha_i + \sum_j \beta_j$.\\[0.3em]
+Covariance stationary iff $\rho < 1$.\\[0.3em]
+Long-run variance: $\bar\sigma^2 = \omega / (1 - \rho)$.\\[0.3em]
+Half-life of shocks: $\log(0.5) / \log\rho$.
+}
+
+The sum $\rho = \sum \alpha_i + \sum \beta_j$ is the \emph{persistence}. Taking
+unconditional expectations of the GARCH recursion and solving for the fixed
+point gives the long-run variance:
+\[
+\bar\sigma^2 = \frac{\omega}{1 - \rho}, \qquad \rho < 1.
+\]
+When $\rho \geq 1$ the model is non-stationary: shocks accumulate rather than
+decay, and the unconditional variance is infinite. The IGARCH boundary
+$\rho = 1$ is a random walk in variance and should be avoided for fitting.
+
+\subsection{Half-life of shocks}
+
+Starting from $\sigma_0^2 = \bar\sigma^2 + \delta$ (a perturbation $\delta$
+above the long run), the expected deviation from $\bar\sigma^2$ after $k$
+steps is $\rho^k \delta$. The half-life is the $k$ at which $\rho^k = 0.5$:
+\[
+k_{1/2} = \frac{\log 0.5}{\log \rho}.
+\]
+For a typical daily GARCH(1,1) with $\rho = 0.99$, the half-life is about
+$69$ trading days --- roughly three months. High persistence is the norm for
+daily financial data.
+
+\subsection{Forecasting}
+
+The multi-step forecast follows the AR(1)-in-variance recursion
+\[
+\E[\sigma_{t+h}^2 \mid \mathcal{F}_t] = \omega + \rho \,
+  \E[\sigma_{t+h-1}^2 \mid \mathcal{F}_t],
+\]
+which reverts geometrically to $\bar\sigma^2$:
+\[
+\E[\sigma_{t+h}^2 \mid \mathcal{F}_t] = \bar\sigma^2 + \rho^h
+  \bigl(\sigma_t^2 - \bar\sigma^2\bigr).
+\]
+The forecast is data-conditioned when the last fitted $\sigma_t^2$ is used as
+the seed, or unconditional when seeded from $\bar\sigma^2$.
+
+\section{Maximum Likelihood by Hand-Rolled Optimisation}
+
+\marginnote{%
+\textbf{Constrained MLE}\\[0.3em]
+Optimise an unconstrained $\theta$ and map to the constrained space:
+$\omega = e^{t_0}$, $\alpha_i = \mathrm{sigmoid}(t_i) \cdot 0.49/q$,
+$\beta_j = \mathrm{sigmoid}(t_j) \cdot (0.998 - \sum\alpha)/p$. This
+guarantees $\omega > 0$, $\alpha_i, \beta_j \geq 0$, and $\rho < 0.998$.
+}
+
+We fit both ARCH and GARCH by maximising the Gaussian log-likelihood with a
+derivative-free optimiser. The constraint $\rho < 1$ is enforced not by
+penalising the objective but by \emph{parameter transformation}: we optimise
+an unconstrained vector $t$ and map it to the constrained space via
+$\omega = e^{t_0}$, $\alpha_i = \mathrm{sigmoid}(t_i) \cdot 0.49 / q$, and
+$\beta_j = \mathrm{sigmoid}(t_j) \cdot (0.998 - \sum\alpha) / p$. The
+$0.998$ cap on persistence prevents the optimiser from wandering onto the
+IGARCH boundary, where the likelihood becomes flat and numerically
+ill-conditioned.
+
+\subsection{Nelder-Mead simplex}
+
+The Nelder-Mead algorithm maintains a simplex of $n+1$ points in
+$n$-dimensional parameter space and cycles through four operations:
+\begin{description}
+    \item[Reflection] ($\alpha = 1$) Mirror the worst vertex through the
+      centroid of the others.
+    \item[Expansion] ($\gamma = 2$) If the reflection is better than the
+      best, stretch further in the same direction.
+    \item[Contraction] ($\rho = 0.5$) If the reflection is worse than the
+      second-worst, contract toward the centroid.
+    \item[Shrink] ($\sigma = 0.5$) If contraction fails, pull all vertices
+      halfway toward the best.
+\end{description}
+Convergence is declared when both the simplex diameter and the spread of
+function values fall below a tolerance.
+
+\subsection{Coordinate ascent with multi-start}
+
+\marginnote{%
+\textbf{Why coordinate ascent?}\\[0.3em]
+For 2--4 parameter MLE problems, Nelder-Mead can degenerate near the
+constraint boundary. Coordinate ascent with step halving tracks the
+$\alpha$--$\beta$ ridge cleanly, and multi-start from five perturbed
+initial guesses escapes the occasional local plateau.
+}
+
+For the low-dimensional MLE problems here (ARCH(1) has 2 parameters,
+GARCH(1,1) has 3), a simpler and more robust alternative is coordinate
+ascent: cycle through each coordinate, try a positive and a negative step,
+accept any improvement, and halve the step when no coordinate improves.
+Convergence is declared when the step falls below the tolerance. We wrap
+this in a \emph{multi-start} that runs coordinate ascent from the initial
+guess plus five perturbations $[+0.1, -0.1, +0.3, -0.3, +0.5]$ and keeps the
+best result.
+
+\begin{lstlisting}[language=Rust]
+/// Coordinate-wise hill climbing with adaptive step size.
+pub fn coordinate_ascent<F>(f: F, x0: &[f64], step: f64, max_iter: usize, tol: f64)
+    -> OptResult
+where F: Fn(&[f64]) -> f64
+{
+    let mut x = x0.to_vec();
+    let mut best_f = f(&x);
+    let mut step = step;
+    for _ in 0..max_iter {
+        let mut improved = false;
+        for i in 0..x.len() {
+            let old = x[i];
+            x[i] += step;  // try positive step
+            if f(&x) > best_f { best_f = f(&x); improved = true; continue; }
+            x[i] = old - step;  // try negative step
+            if f(&x) > best_f { best_f = f(&x); improved = true; continue; }
+            x[i] = old;  // restore
+        }
+        if !improved { step *= 0.5; if step < tol { break; } }
+    }
+    OptResult { x, f: best_f, .. }
+}
+
+/// Multi-start: run coordinate_ascent from x0 plus perturbations.
+pub fn multistart<F>(f: F, x0: &[f64], step: f64, max_iter: usize, tol: f64)
+    -> OptResult
+where F: Fn(&[f64]) -> f64
+{
+    let mut best = coordinate_ascent(&f, x0, step, max_iter, tol);
+    for &perturb in &[0.1, -0.1, 0.3, -0.3, 0.5] {
+        let x_alt: Vec<f64> = x0.iter().map(|&v| v + perturb).collect();
+        let result = coordinate_ascent(&f, &x_alt, step, max_iter, tol);
+        if result.f > best.f { best = result; }
+    }
+    best
+}
+\end{lstlisting}
+
+All three optimisers \emph{maximise} the objective --- the MLE closures pass
+\texttt{model.log\_likelihood(returns)} directly, without negation.
+
+\section{Implementation in Rust}
+
+\marginnote{%
+\textbf{Why three models in one crate?}\\[0.3em]
+EWMA, ARCH, and GARCH form a progression: EWMA is one parameter
+($\lambda$); ARCH(1) adds a lag coefficient ($\omega, \alpha$);
+GARCH(1,1) adds the lagged-variance coefficient ($\beta$). Keeping
+them in one crate lets you compare log-likelihoods and in-sample fit
+on the same return series with the same MLE machinery.
+}
+
+\begin{lstlisting}[language=Rust]
+use quant_vol::{ewma_vol, ArchModel, GarchModel};
+
+let returns = vec![0.01, -0.02, 0.015, -0.01, 0.02, -0.005, 0.01, -0.03];
+
+// EWMA (RiskMetrics lambda = 0.94).
+let sigma2 = ewma_vol(&returns, 0.94).unwrap();
+
+// ARCH(1) fit by Gaussian MLE.
+let arch = ArchModel::fit(&returns, 1).unwrap();
+let arch_ll = arch.log_likelihood(&returns);
+
+// GARCH(1,1) fit by Gaussian MLE.
+let garch = GarchModel::fit(&returns, 1, 1).unwrap();
+println!("persistence = {:.4}", garch.persistence());
+println!("long-run var = {:.6}", garch.long_run_variance());
+println!("half-life = {:.1} periods", garch.half_life());
+\end{lstlisting}
+
+The constrained parameterisation for GARCH(1,1) is:
+\begin{lstlisting}[language=Rust]
+fn from_transformed(params: &[f64], p: usize, q: usize) -> Self {
+    let omega = params[0].clamp(-30.0, 30.0).exp();
+    let alpha_max = 0.49;
+    let alphas: Vec<f64> = (0..q)
+        .map(|i| sigmoid(params[1 + i].clamp(-30.0, 30.0)) * alpha_max / q as f64)
+        .collect();
+    let alpha_sum: f64 = alphas.iter().sum();
+    let beta_max = (0.998 - alpha_sum).max(1e-6);
+    let betas: Vec<f64> = (0..p)
+        .map(|j| sigmoid(params[1 + q + j].clamp(-30.0, 30.0)) * beta_max / p as f64)
+        .collect();
+    GarchModel { omega, alphas, betas }
+}
+\end{lstlisting}
+The initial guess targets $\omega \approx 0.05 \hat\sigma^2$,
+$\alpha \approx 0.05$, $\beta \approx 0.90$, which are typical for daily
+financial returns.
+
+\section{Volatility Clustering in Action}
+
+\begin{lstlisting}[language=bash]
+$ cargo run -p quant-vol --example vol_clustering
+Regimes: calm(1000) -> shock(500) -> calm(500)
+  Calm sigma^2  = 0.000100
+  Shock sigma^2 = 0.010000
+
+Constant-volatility model:
+  Sample variance = 0.002585
+  Log-likelihood  = 3120.38
+
+GARCH(1,1):
+  omega = 0.000004
+  alpha = 0.145513
+  beta  = 0.849413
+  Persistence = 0.9949
+  Log-likelihood = 5072.78
+
+  -> GARCH beats constant-vol by 1952.4 LL points
+\end{lstlisting}
+
+The constant-volatility model uses a single sample variance for every period,
+so it over-estimates variance during the calm regime (producing too-small
+densities for the small returns that actually occur) and under-estimates it
+during the shock regime (producing too-small densities for the large returns
+that actually occur). GARCH tracks the regime changes through its conditional
+variance recursion and wins by nearly $2000$ log-likelihood points.
+
+\begin{keyinsight}
+The log-likelihood gain from GARCH over constant volatility is a direct
+quantification of how much volatility clustering matters. A gain of $1952$
+LL points across $2000$ observations is roughly $0.976$ nats per observation
+--- a substantial amount of explained structure that a Gaussian-with-constant-
+variance model leaves on the table.
+\end{keyinsight}
+
+\section{Parameter Recovery}
+
+When the data are generated by a known GARCH(1,1), the MLE should recover the
+true parameters up to sampling error. With $2000$ observations from
+$\omega = 0.01$, $\alpha = 0.08$, $\beta = 0.90$ (true persistence $0.98$,
+true long-run variance $0.5$):
+
+\begin{lstlisting}[language=bash]
+$ cargo run -p quant-vol --example vol_demo
+DGP: GARCH(1,1) with omega=0.01, alpha=0.08, beta=0.90
+True persistence:     0.9800
+True long-run var:     0.500000
+
+GARCH(1,1):
+  omega = 0.0111
+  alpha = 0.0910
+  beta  = 0.8934
+  Persistence = 0.9844  (true 0.9800)
+  Long-run var = 0.7150  (true 0.500000)
+  Half-life    = 44.1 periods
+  Log-likelihood = -2298.62
+\end{lstlisting}
+
+The fitted persistence is within $0.005$ of the truth. The long-run variance
+is harder to pin down because it divides $\omega$ by $1 - \rho$, so a small
+error in $\rho$ near $1$ amplifies. This is a general feature of
+high-persistence GARCH fits: $\omega$ and $\rho$ are well-identified, but
+$\bar\sigma^2 = \omega / (1 - \rho)$ has a much wider confidence band.
+
+\section{Exercises}
+
+\begin{enumerate}
+    \item \textbf{EGARCH}: Exponential GARCH models $\log \sigma_t^2$ as a
+      linear function of past squared returns and their signs, which captures
+      the leverage effect (negative returns raise volatility more than
+      positive ones). Implement EGARCH(1,1) and compare its log-likelihood
+      to plain GARCH(1,1) on a series with a visible leverage effect.
+
+    \item \textbf{GJR-GARCH}: The Glosten-Jagannathan-Runkle model adds an
+      indicator term that activates when the lagged return is negative:
+      $\sigma_t^2 = \omega + \alpha r_{t-1}^2 + \gamma \mathbf{1}_{r_{t-1}<0}
+      r_{t-1}^2 + \beta \sigma_{t-1}^2$. Implement it and test on equity
+      index returns. Is $\gamma$ significantly positive?
+
+    \item \textbf{Forecast evaluation}: Fit GARCH(1,1) on the first $80\%$ of
+      a return series, forecast the conditional variance for the remaining
+      $20\%$, and compare the forecast bands to the realised squared returns.
+      Compute the mean squared error of the variance forecast and compare to
+      the EWMA forecast.
+
+    \item \textbf{Student-$t$ innovations}: Replace the Gaussian likelihood
+      with a Student-$t$ likelihood with $\nu$ degrees of freedom (fit $\nu$
+      jointly with $(\omega, \alpha, \beta)$). Does the $t$-GARCH fit
+      outperform the Gaussian GARCH on a heavy-tailed series? What is the
+      fitted $\nu$?
+
+    \item \textbf{Long-memory FIGARCH}: The FIGARCH model replaces the
+      geometric decay of shocks with a hyperbolic decay by fractionally
+      differencing the variance recursion. Implement FIGARCH($1, d, 1$) and
+      compare its half-life to plain GARCH(1,1) on a long daily series. How
+      much longer is the effective memory?
+\end{enumerate}
+
+\section{Key Takeaways}
+
+\begin{itemize}
+    \item Financial returns show volatility clustering: squared returns are
+      positively autocorrelated for many lags. Constant-volatility models
+      cannot reproduce this.
+    \item EWMA is the simplest fix: a one-parameter geometrically weighted
+      average of past squared returns. RiskMetrics uses $\lambda = 0.94$ for
+      daily data.
+    \item ARCH($q$) makes the conditional variance a linear function of the
+      past $q$ squared returns. It captures clustering but needs many lags to
+      match the slow decay of the squared-return ACF.
+    \item GARCH($p, q$) adds lagged conditional variances, giving shocks a
+      long, smooth effect with only a few parameters. GARCH(1,1) is the
+      standard workhorse.
+    \item Persistence $\rho = \sum\alpha + \sum\beta$ must be $< 1$ for
+      covariance stationarity. The long-run variance is
+      $\omega / (1 - \rho)$ and the half-life of shocks is
+      $\log 0.5 / \log \rho$.
+    \item Fitting by Gaussian MLE with a hand-rolled optimiser is feasible
+      because the likelihood is a deterministic function of the parameters
+      and the data. Parameter transformation (exp, sigmoid) enforces
+      positivity and stationarity without penalising the objective.
+\end{itemize}
+
+\vspace{1em}
+\noindent\textbf{Next chapter}: Stochastic processes---Brownian motion, Poisson
+processes, and Monte Carlo simulation for derivative pricing.

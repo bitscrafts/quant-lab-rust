@@ -137,6 +137,55 @@ dependencies = [
 ]
 
 [[package]]
+name = "quant-factors"
+version = "0.1.0"
+dependencies = [
+ "approx",
+ "quant-core",
+ "quant-portfolio",
+ "quant-timeseries",
+ "thiserror",
+]
+
+[[package]]
+name = "quant-microstructure"
+version = "0.1.0"
+dependencies = [
+ "approx",
+ "quant-core",
+ "thiserror",
+]
+
+[[package]]
+name = "quant-options"
+version = "0.1.0"
+dependencies = [
+ "approx",
+ "quant-core",
+ "quant-stochastic",
+ "thiserror",
+]
+
+[[package]]
+name = "quant-portfolio"
+version = "0.1.0"
+dependencies = [
+ "approx",
+ "quant-core",
+ "quant-timeseries",
+ "thiserror",
+]
+
+[[package]]
+name = "quant-stochastic"
+version = "0.1.0"
+dependencies = [
+ "approx",
+ "quant-core",
+ "thiserror",
+]
+
+[[package]]
 name = "quant-timeseries"
 version = "0.1.0"
 dependencies = [

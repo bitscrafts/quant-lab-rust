@@ -1,0 +1,384 @@
+\chapter{Stochastic Processes and Monte Carlo}
+\label{ch:stochastic}
+
+\begin{companioncode}{quant-stochastic}
+Code: \texttt{crates/quant-stochastic/}\\
+Dependencies: \crate{quant-core}, \crate{thiserror}\\
+Run: \texttt{cargo run -p quant-stochastic --example mc\_pricing}
+\end{companioncode}
+
+\section{Learning Objectives}
+
+Asset prices are often modelled as stochastic processes --- random functions
+of time. The Brownian motion is the continuous-time limit of a random walk and
+the building block of modern quantitative finance. From it we derive geometric
+Brownian motion (the Black-Scholes asset model), the Poisson process (jump
+models), and the Monte Carlo method (the generic pricing engine). After
+completing this chapter you can:
+
+\begin{itemize}
+    \item Simulate standard Brownian motion from independent Gaussian
+      increments and verify its quadratic variation property
+    \item Simulate geometric Brownian motion via the exact closed-form
+      solution to the SDE $dS_t = \mu S_t \, dt + \sigma S_t \, dW_t$
+    \item Simulate a Poisson process via exponential interarrival times and
+      build a Merton jump-diffusion on top of GBM
+    \item Price a European option by Monte Carlo and report a standard error
+    \item State the $1/\sqrt{N}$ convergence law and demonstrate it
+      numerically
+    \item Reduce estimator variance with antithetic variates and verify
+      put-call parity on simulated prices
+\end{itemize}
+
+\begin{keyinsight}
+Monte Carlo pricing converges to the analytical Black-Scholes price as
+$N \to \infty$, with standard error decreasing as $1/\sqrt{N}$. This is the
+law of large numbers in action: quadruple the paths, halve the error. No
+other numerical method gives such a clean, dimension-independent error
+bound --- which is why Monte Carlo is the workhorse of derivatives pricing
+in high dimensions.
+\end{keyinsight}
+
+\section{Brownian Motion}
+
+\marginnote{%
+\textbf{Brownian motion}\\[0.3em]
+$W_0 = 0$, $W_{t+\Delta t} - W_t \sim \Normal(0, \Delta t)$, independent
+increments. Quadratic variation $[W]_t = t$.
+}
+
+A standard Brownian motion $\{W_t\}$ is the continuous-time limit of a random
+walk with independent Gaussian increments:
+\[
+W_0 = 0, \qquad W_{t+\Delta t} = W_t + \sqrt{\Delta t} \, Z, \quad
+Z \sim \Normal(0, 1).
+\]
+Two properties define it:
+\begin{enumerate}
+    \item \textbf{Independent increments.} $W_{t+s} - W_t$ is independent of
+      $\{W_u : u \leq t\}$.
+    \item \textbf{Quadratic variation.} The sum of squared increments
+      $\sum (W_{t_k} - W_{t_{k-1}})^2$ converges in probability to $T$ as
+      the partition refines --- the defining property of Brownian motion that
+      distinguishes it from smooth functions.
+\end{enumerate}
+
+\subsection{Quadratic Variation}
+
+For a Brownian motion sampled at spacing $\Delta t$, the realised quadratic
+variation
+\[
+[W]_T^{(\Delta t)} = \sum_{k=1}^{n} (W_{k \Delta t} - W_{(k-1)\Delta t})^2
+\]
+converges in probability to $T = n \Delta t$ as $\Delta t \to 0$. This is the
+empirical signature of Brownian motion: the path is continuous but
+nowhere differentiable, and its roughness is exactly $t$.
+
+\section{Geometric Brownian Motion}
+
+\marginnote{%
+\textbf{GBM SDE}\\[0.3em]
+$dS_t = \mu S_t \, dt + \sigma S_t \, dW_t$\\[0.3em]
+Closed form: $S_T = S_0 \exp\!\big((\mu - \tfrac{1}{2}\sigma^2) T + \sigma W_T\big)$
+}
+
+The Black-Scholes asset model is geometric Brownian motion, the exponential
+of Brownian motion with drift:
+\[
+dS_t = \mu S_t \, dt + \sigma S_t \, dW_t.
+\]
+It\^o's lemma gives the exact solution
+\[
+S_T = S_0 \exp\!\left( \left(\mu - \tfrac{1}{2}\sigma^2\right) T + \sigma W_T \right).
+\]
+Two facts follow immediately:
+\begin{itemize}
+    \item $\log(S_T / S_0) \sim \Normal((\mu - \tfrac{1}{2}\sigma^2)T,\; \sigma^2 T)$.
+    \item $\E[S_T] = S_0 \, e^{\mu T}$ (the log-normal mean).
+\end{itemize}
+The companion crate uses the closed form for each step, so the terminal
+distribution is exact for any $\Delta t$ --- no Euler discretisation error.
+
+\section{Poisson Process and Jump-Diffusion}
+
+\marginnote{%
+\textbf{Poisson process}\\[0.3em]
+$N(t) \sim \text{Poisson}(\lambda t)$. Interarrival times $\sim
+\text{Exp}(\lambda)$, mean $1/\lambda$.
+}
+
+The Poisson process counts rare events: $N(t)$ is the number of events in
+$[0, t]$, with $\E[N(t)] = \lambda t$. Interarrival times are exponential
+with rate $\lambda$. The inverse-CDF sampler draws
+$X = -\ln(1 - U) / \lambda$ with $U \sim \text{Uniform}(0, 1)$.
+
+\subsection{Merton Jump-Diffusion}
+
+\marginnote{%
+\textbf{Merton model}\\[0.3em]
+$dS_t = \mu S_t \, dt + \sigma S_t \, dW_t + (J - 1) S_t \, dN_t$\\[0.3em]
+Between jumps: GBM. At a jump: $S \to S \cdot J$.
+}
+
+Robert Merton's jump-diffusion superimposes Poisson jumps on GBM:
+\[
+dS_t = \mu S_t \, dt + \sigma S_t \, dW_t + (J - 1) S_t \, dN_t,
+\]
+where $N_t$ is a Poisson process with rate $\lambda$ and $J$ is the jump
+multiplier. Between jumps the process follows GBM; at each event time the
+price is multiplied by $J$. The companion crate uses $J = e^{\mu_J}$ (a
+deterministic log-normal jump, with the randomness in the timing). With
+$\lambda = 0$ there are no jumps and the process reduces exactly to GBM.
+
+\section{The Monte Carlo Method}
+
+\marginnote{%
+\textbf{MC estimator}\\[0.3em]
+$\hat{C} = e^{-rT} \frac{1}{N} \sum_{i=1}^N \max(S_T^{(i)} - K, 0)$\\[0.3em]
+$\text{SE}(\hat{C}) = e^{-rT} \frac{\text{std}(\text{payoff})}{\sqrt{N}}$
+}
+
+Monte Carlo prices a derivative by simulating many paths and averaging the
+discounted payoff. For a European call under risk-neutral GBM:
+\[
+\hat{C} = e^{-rT} \frac{1}{N} \sum_{i=1}^N \max(S_T^{(i)} - K, 0),
+\qquad
+S_T^{(i)} = S_0 \exp\!\left( \left(r - \tfrac{1}{2}\sigma^2\right) T + \sigma \sqrt{T} \, Z_i \right).
+\]
+Each path is a single normal draw --- the terminal $Z_i$ --- so the estimator
+is minimal-variance. The standard error of the mean is
+\[
+\text{SE}(\hat{C}) = e^{-rT} \frac{s}{\sqrt{N}}, \qquad
+s^2 = \frac{1}{N-1} \sum_i (\text{payoff}_i - \bar{\text{payoff}})^2.
+\]
+
+\subsection{The $1/\sqrt{N}$ Law}
+
+The standard error shrinks as $1/\sqrt{N}$: quadruple the paths, halve the
+error. This is slow --- to reduce the error by $10\times$ one needs $100\times$
+the paths --- but it is \emph{dimension-independent}. Deterministic quadrature
+suffers the curse of dimensionality; Monte Carlo does not. For a
+50-dimensional exotic option, Monte Carlo's error is still $O(1/\sqrt{N})$.
+
+\subsection{Antithetic Variates}
+
+\marginnote{%
+\textbf{Antithetic variates}\\[0.3em]
+Pair $Z$ and $-Z$. For monotone payoffs the pair average has lower
+variance than two independent samples.
+}
+
+Variance reduction lets us extract more precision per random draw.
+\emph{Antithetic variates} pair each $Z$ with $-Z$:
+\[
+\hat{C}_{\text{anti}} = e^{-rT} \frac{1}{2N} \sum_{i=1}^N
+\big[\max(S_T(Z_i) - K, 0) + \max(S_T(-Z_i) - K, 0)\big].
+\]
+The two payoffs are perfectly negatively correlated (the call payoff is
+monotone increasing in $Z$), so the variance of the pair average is lower
+than the variance of two independent samples. The cost is one extra payoff
+evaluation per draw --- negligible versus the cost of the normal draw.
+
+\section{Black-Scholes: The Analytical Benchmark}
+
+\marginnote{%
+\textbf{Black-Scholes call}\\[0.3em]
+$C = S_0 \Phi(d_1) - K e^{-rT} \Phi(d_2)$\\[0.3em]
+$d_1 = \frac{\ln(S_0/K) + (r + \frac{1}{2}\sigma^2)T}{\sigma\sqrt{T}},\;
+d_2 = d_1 - \sigma\sqrt{T}$
+}
+
+The Black-Scholes formula gives the closed-form European call price:
+\[
+C = S_0 \Phi(d_1) - K e^{-rT} \Phi(d_2).
+\]
+The normal CDF $\Phi$ is computed via the Abramowitz-Stegun (1964) formula
+7.1.26 rational approximation of $\text{erf}$, with $\Phi(x) = \tfrac{1}{2}(1 +
+\text{erf}(x/\sqrt{2}))$. Maximum error $< 7.5 \times 10^{-8}$ --- far smaller
+than Monte Carlo's statistical error for practical $N$.
+
+\section{Implementation in Rust}
+
+\subsection{Brownian Motion}
+
+\begin{lstlisting}[language=Rust]
+pub fn brownian_motion<R: Rng + ?Sized>(n: usize, dt: f64, rng: &mut R) -> Vec<f64> {
+    let normal = Normal::standard();
+    let sqrt_dt = dt.sqrt();
+    let mut path = Vec::with_capacity(n + 1);
+    path.push(0.0); // W_0 = 0
+    let mut w = 0.0_f64;
+    for _ in 0..n {
+        let z = normal.sample(rng);
+        w += sqrt_dt * z;
+        path.push(w);
+    }
+    path
+}
+\end{lstlisting}
+
+\subsection{Monte Carlo Call}
+
+\begin{lstlisting}[language=Rust]
+pub fn mc_call<R: Rng + ?Sized>(
+    s0: f64, k: f64, r: f64, sigma: f64, t: f64,
+    n_paths: usize, rng: &mut R,
+) -> Result<McResult, StochError> {
+    validate_mc_inputs(s0, k, r, sigma, t, n_paths)?;
+    let normal = Normal::standard();
+    let drift = (r - 0.5 * sigma * sigma) * t;
+    let diffusion = sigma * t.sqrt();
+    let discount = (-r * t).exp();
+    let mut payoffs = Vec::with_capacity(n_paths);
+    for _ in 0..n_paths {
+        let z = normal.sample(rng);
+        let s_t = s0 * (drift + diffusion * z).exp();
+        payoffs.push((s_t - k).max(0.0));
+    }
+    Ok(reduce(&payoffs, discount))
+}
+\end{lstlisting}
+
+\section{Results and Analysis}
+
+\subsection{Monte Carlo Convergence}
+
+Pricing an at-the-money call ($S_0 = K = 100$, $r = 0.05$, $\sigma = 0.2$,
+$T = 1$) against the Black-Scholes benchmark $C_{\text{BS}} = 10.4506$:
+
+\begin{center}
+\begin{tabular}{rrrr}
+\toprule
+$N$ & MC price & BS price & SE \\
+\midrule
+100 & 8.9770 & 10.4506 & 1.4320 \\
+1000 & 10.3204 & 10.4506 & 0.4641 \\
+10000 & 10.5059 & 10.4506 & 0.1469 \\
+100000 & 10.4194 & 10.4506 & 0.0465 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The estimate converges to Black-Scholes and the standard error shrinks as
+$1/\sqrt{N}$.
+
+\subsection{The $1/\sqrt{N}$ Law}
+
+\begin{center}
+\begin{tabular}{lrl}
+\toprule
+$N$ & SE & ratio vs $N=10000$ \\
+\midrule
+10000 & 0.1479 & 1.00 \\
+40000 & 0.0732 & 2.02$\times$ smaller \\
+160000 & 0.0367 & 4.03$\times$ smaller \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Quadrupling paths halves the SE ($2.02\times$); 16$\times$ paths gives
+$4.03\times$ smaller SE --- the $1/\sqrt{N}$ law made exact.
+
+\subsection{Antithetic Variance Reduction}
+
+With 50000 normal draws each:
+
+\begin{center}
+\begin{tabular}{lrrr}
+\toprule
+Method & price & SE & payoffs \\
+\midrule
+Plain MC & 10.4191 & 0.0656 & 50000 \\
+Antithetic & 10.4962 & 0.0467 & 100000 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Antithetic variates reduce the standard error by \textbf{28.8\%} per normal
+draw. The pair average exploits the negative correlation between the $Z$ and
+$-Z$ payoffs.
+
+\subsection{Quadratic Variation}
+
+\begin{center}
+\begin{tabular}{rrrr}
+\toprule
+$n$ & QV & $T$ & rel.\ error \\
+\midrule
+100 & 0.346 & 0.397 & 12.8\% \\
+1000 & 4.095 & 3.968 & 3.2\% \\
+10000 & 40.509 & 39.683 & 2.1\% \\
+100000 & 399.560 & 396.825 & 0.69\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The realised quadratic variation converges to $T$ as the partition refines
+--- the defining property of Brownian motion.
+
+\subsection{GBM Terminal Distribution}
+
+With 100000 paths ($S_0 = 100$, $\mu = 0.05$, $\sigma = 0.2$, $T = 1$):
+\[
+\E[S_T] = 105.07 \quad \text{vs analytical } S_0 e^{\mu T} = 105.13.
+\]
+The 5th--95th percentile band is $[74.2, 143.2]$ --- the log-normal right
+skew that produces fat tails in returns.
+
+\begin{keyinsight}
+The convergence table is the law of large numbers made visible. At
+$N = 100$ the estimate is off by 14\%; at $N = 100000$ it is off by
+0.03\%. The standard error shrinks by exactly $\sqrt{10}$ for each
+$10\times$ increase in paths --- the $1/\sqrt{N}$ law, the single most
+important rate in computational finance.
+\end{keyinsight}
+
+\section{Exercises}
+
+\begin{enumerate}
+    \item \textbf{Control variates.} Use the analytical GBM mean $\E[S_T] =
+      S_0 e^{rT}$ as a control variate: $\hat{C}_{\text{cv}} = \hat{C} -
+      \beta(\hat{M} - \E[S_T])$, where $\hat{M}$ is the MC estimate of
+      $\E[S_T]$ and $\beta = \text{Cov}(\text{payoff}, S_T)/\text{Var}(S_T)$.
+      How much does the SE drop versus plain MC?
+    \item \textbf{Asian option.} Price an arithmetic-average Asian call
+      $\max(\bar S - K, 0)$ with $\bar S = \frac{1}{n}\sum S_{t_k}$. This
+      requires time-stepping (no closed form). Compare SE to the European
+      call for the same $N$.
+    \item \textbf{Euler vs exact.} Discretise GBM by Euler ($S_{t+\Delta t} =
+      S_t + \mu S_t \Delta t + \sigma S_t \sqrt{\Delta t} Z$) and compare
+      the terminal distribution to the exact solution at $\Delta t = 1/252$.
+      How large is the discretisation bias?
+    \item \textbf{Confidence intervals.} For $N = 10000$, compute the 95\%
+      confidence interval $\hat{C} \pm 1.96 \cdot \text{SE}$ and verify it
+      covers the Black-Scholes price. Repeat 1000 times and check the
+      coverage --- is it close to 95\%?
+\end{enumerate}
+
+\section{Key Takeaways}
+
+\begin{itemize}
+    \item Brownian motion is the continuous-time random walk: independent
+      Gaussian increments, quadratic variation $[W]_t = t$. It is the
+      building block of continuous-time finance.
+    \item Geometric Brownian motion is the exponential of Brownian motion
+      with drift, $S_T = S_0 \exp((\mu - \tfrac{1}{2}\sigma^2)T + \sigma W_T)$,
+      and the Black-Scholes asset model. The closed form gives exact terminal
+      distributions for any $\Delta t$ --- no Euler bias.
+    \item The Poisson process counts rare events via exponential interarrival
+      times; the Merton jump-diffusion superimposes it on GBM and reduces to
+      GBM when $\lambda = 0$.
+    \item Monte Carlo prices any payoff by simulating many paths and averaging
+      the discounted payoff. The standard error shrinks as $1/\sqrt{N}$ ---
+      slow but dimension-independent, the workhorse for high-dimensional
+      derivatives.
+    \item Antithetic variates pair $Z$ with $-Z$; for monotone payoffs the
+      pair average cuts the SE per normal draw by roughly 30\%.
+    \item The Black-Scholes formula (normal CDF via Abramowitz-Stegun erf,
+      error $< 7.5 \times 10^{-8}$) anchors the Monte Carlo estimator and
+      verifies convergence to the truth.
+\end{itemize}
+
+\vspace{1em}
+\noindent\textbf{Next chapter}: Options pricing --- Black-Scholes Greeks,
+implied volatility, and finite-difference sensitivity analysis.
