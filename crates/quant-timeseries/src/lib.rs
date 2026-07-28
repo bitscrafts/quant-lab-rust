@@ -14,6 +14,7 @@
 //! - [`mod@acf`]: autocorrelation function
 //! - [`adf`]: `AdfResult`, `adf_test`, `MACKINNON_5PCT`
 //! - [`fracdiff`]: `ffd_weights`, `frac_diff`, `find_min_d`
+//! - [`cusum`]: `CusumDetector`, `CusumConfig`, structural break detection
 //!
 //! # Example
 //!
@@ -29,12 +30,14 @@
 
 pub mod acf;
 pub mod adf;
+pub mod cusum;
 pub mod error;
 pub mod fracdiff;
 pub mod ols;
 
 pub use acf::acf;
 pub use adf::{AdfResult, MACKINNON_5PCT, adf_test};
+pub use cusum::{CusumConfig, CusumDetector};
 pub use error::TimeSeriesError;
 pub use fracdiff::{ffd_weights, find_min_d, frac_diff};
 pub use ols::{OlsFit, ols};

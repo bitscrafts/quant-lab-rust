@@ -555,6 +555,52 @@ empirically, has a higher Sharpe.
       the primary alone.
 \end{enumerate}
 
+\section{Key Takeaways}
+
+\begin{itemize}
+    \item \textbf{Triple-barrier labeling} converts price paths into
+      supervised learning targets by setting profit-taking, stop-loss,
+      and time barriers. It avoids the look-ahead bias of fixed-horizon
+      labeling.
+
+    \item \textbf{Sample weights from uniqueness} down-weight events
+      that overlap heavily with others, reducing overfitting to
+      clustered periods. The average uniqueness metric quantifies
+      temporal independence.
+
+    \item \textbf{Purged k-fold cross-validation} prevents information
+      leakage by removing overlapping events from training folds and
+      applying an embargo period. It exposes overfitting that standard
+      k-fold misses in time-series data.
+
+    \item \textbf{Walk-forward analysis} validates strategy robustness
+      by measuring performance degradation from in-sample to
+      out-of-sample. Walk-Forward Efficiency (WFE) below 0.5 indicates
+      severe overfitting (see \cref{sec:walk-forward} in
+      \cref{ch:backtest}).
+
+    \item \textbf{Kelly criterion bet sizing} maximizes long-run
+      geometric growth by sizing positions proportional to edge and
+      inversely to volatility. Fractional Kelly trades growth for
+      reduced drawdowns.
+
+    \item \textbf{Meta-labeling} separates direction (primary model)
+      from confidence (meta-model), producing more selective strategies
+      with higher Sharpe ratios. The triple-barrier label of the
+      primary becomes the target of the meta-model.
+
+    \item \textbf{Trait-based architecture} enables composition of
+      labeling, cross-validation, and bet sizing strategies without
+      code duplication. The generic backtest engine combines any
+      \texttt{Labeler}, \texttt{CrossValidator}, and \texttt{BetSizer}
+      via trait bounds.
+
+    \item \textbf{AFML workflow integration} orchestrates the full
+      pipeline: label events $\to$ weight samples $\to$ cross-validate
+      $\to$ size bets $\to$ evaluate. Each component is swappable via
+      trait implementations, promoting experimentation and reuse.
+\end{itemize}
+
 \section{References}
 
 \begin{itemize}

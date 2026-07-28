@@ -31,14 +31,15 @@
 //! ```
 
 pub mod blackscholes;
-
 pub mod brownian;
 pub mod error;
 pub mod montecarlo;
 pub mod poisson;
+pub mod processes;
 
 pub use blackscholes::{bs_call, bs_put, d1, d2, normal_cdf};
 pub use brownian::{brownian_motion, gbm, quadratic_variation};
 pub use error::StochError;
 pub use montecarlo::{McResult, ci_half_width, mc_call, mc_call_antithetic, mc_put};
 pub use poisson::{exponential_variate, jump_diffusion, poisson_count, poisson_process};
+pub use processes::{Gbm, JumpDiffusion, Poisson};

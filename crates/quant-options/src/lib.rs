@@ -32,11 +32,13 @@ pub mod error;
 pub mod finite_diff;
 pub mod greeks;
 pub mod implied_vol;
+pub mod pricer;
 
 pub use error::OptionsError;
 pub use finite_diff::{delta_fd, gamma_fd, theta_fd, vega_fd};
 pub use greeks::{delta, gamma, normal_pdf, rho, theta, vega};
 pub use implied_vol::implied_vol;
+pub use pricer::BlackScholes;
 
 // Re-export the Black-Scholes pricing primitives from `quant-stochastic` so
 // that `quant-options` is a single import surface for the options toolkit.

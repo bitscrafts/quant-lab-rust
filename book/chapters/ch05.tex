@@ -327,6 +327,141 @@ the mid-year drawdown. This is the typical result for trend-following
 strategies in noisy markets, and it is the right lesson to take from a first
 backtest.
 
+\section{Walk-Forward Analysis}
+\label{sec:walk-forward}
+
+\marginnote{%
+\textbf{Walk-forward vs k-fold}\\[0.3em]
+Unlike k-fold CV (which can use future data in some folds),
+walk-forward strictly respects time ordering. Each window trains
+on past data and tests on subsequent data --- mimicking real trading.
+}
+
+Walk-forward analysis addresses the overfitting trap by enforcing a strict
+temporal separation between training and testing windows. Instead of tuning
+parameters on the full dataset and evaluating on the same data, walk-forward
+splits the time series into sequential windows:
+
+\begin{enumerate}
+    \item \textbf{In-sample window}: Historical data used for parameter tuning
+    \item \textbf{Out-of-sample window}: Future data (not seen during tuning) for evaluation
+    \item \textbf{Rolling forward}: Advance both windows and repeat
+\end{enumerate}
+
+\subsection{Walk-Forward Efficiency}
+
+\marginnote{%
+\textbf{Interpreting WFE}\\[0.3em]
+$\text{WFE} = 1.0$: Strategy performs equally well in-sample and out-of-sample (ideal)\\[0.3em]
+$\text{WFE} > 1.0$: Strategy performs \emph{better} out-of-sample (rare, check for bugs)\\[0.3em]
+$\text{WFE} \approx 0.5$: Typical degradation for robust strategies\\[0.3em]
+$\text{WFE} < 0.3$: Severe overfitting --- strategy likely fails in live trading
+}
+
+Walk-Forward Efficiency (WFE) quantifies how much performance degrades from
+in-sample to out-of-sample:
+
+\begin{equation}
+\text{WFE} = \frac{\text{Sharpe}_{\text{out-of-sample}}}{\text{Sharpe}_{\text{in-sample}}}
+\end{equation}
+
+A WFE close to 1.0 indicates a robust strategy; values below 0.5 suggest
+severe overfitting. The ratio measures how much ``alpha'' survived the
+transition from tuning to live-like conditions.
+
+\subsection{Implementation}
+
+The \texttt{quant-backtest} crate provides walk-forward support via the
+\texttt{WalkForward} cross-validator (see \cref{ch:afml-backtest} for
+comprehensive AFML pipeline integration):
+
+\begin{lstlisting}[language=Rust]
+use quant_backtest::{WalkForward, WalkForwardConfig};
+use quant_core::CrossValidator;
+
+// Configure rolling 60-bar training, 20-bar testing, step 20 bars
+let config = WalkForwardConfig::rolling(60, 20, 20);
+let wf = WalkForward::new(config);
+
+// Generate splits for 200 bars
+let splits = wf.splits(0, 200);
+// Returns: [ [0-60,60-80], [20-80,80-100], [40-100,100-120], ... ]
+\end{lstlisting}
+
+For each split: tune parameters on the in-sample window, freeze them, evaluate
+on out-of-sample. Aggregate the out-of-sample Sharpe ratios and compute WFE.
+
+\subsection{Visual Representation}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[>=stealth, thick]
+  % Timeline
+  \draw[->] (0,0) -- (12,0) node[right] {Time};
+
+  % Window 1
+  \draw[fill=blue!20] (0.5,0.3) rectangle (3.5,0.7) node[midway] {\small Train};
+  \draw[fill=green!20] (3.5,0.3) rectangle (5,0.7) node[midway] {\small Test};
+
+  % Window 2
+  \draw[fill=blue!20] (2.5,1.0) rectangle (5.5,1.4) node[midway] {\small Train};
+  \draw[fill=green!20] (5.5,1.0) rectangle (7,1.4) node[midway] {\small Test};
+
+  % Window 3
+  \draw[fill=blue!20] (4.5,1.7) rectangle (7.5,2.1) node[midway] {\small Train};
+  \draw[fill=green!20] (7.5,1.7) rectangle (9,2.1) node[midway] {\small Test};
+
+  % Labels
+  \node[below] at (2,0) {\small $t_0$};
+  \node[below] at (6,0) {\small $t_1$};
+  \node[below] at (10,0) {\small $t_2$};
+
+  % Legend
+  \node[right] at (9.5,1.7) {\small Rolling windows};
+  \draw[->] (9,1.5) -- (7,1.9);
+\end{tikzpicture}
+\caption{Walk-forward rolling windows: each training window slides forward,
+  testing on the next unseen period. Unlike k-fold, every test window is
+  strictly after its training window.}
+\label{fig:walk-forward}
+\end{figure}
+
+\subsection{Anchored vs Rolling}
+
+\marginnote{%
+\textbf{Trade-off}\\[0.3em]
+\emph{Anchored}: More data, but older data may be stale\\[0.3em]
+\emph{Rolling}: Fresher data, but smaller sample size
+}
+
+\begin{itemize}
+    \item \textbf{Rolling window}: Training window slides (fixed size, moves forward)
+      \begin{itemize}
+        \item Advantages: Uses only recent data (regime-aware)
+        \item Disadvantages: Smaller training sets, higher variance
+      \end{itemize}
+
+    \item \textbf{Anchored window}: Training window expands (grows over time)
+      \begin{itemize}
+        \item Advantages: Larger training sets, lower variance
+        \item Disadvantages: Older data may represent outdated regimes
+      \end{itemize}
+\end{itemize}
+
+Choose rolling for high-frequency or regime-sensitive strategies; choose
+anchored for slower, more stable strategies.
+
+\begin{keyinsight}
+Walk-forward analysis is the \emph{minimum viable safeguard} against
+overfitting. It does not eliminate overfitting (you can still overfit
+by cherry-picking the best split or tuning on WFE itself), but it forces
+the strategy to prove it can perform on unseen data. A strategy with
+$\text{WFE} > 0.7$ is far more credible than one evaluated only in-sample.
+\end{keyinsight}
+
+For advanced walk-forward workflows integrated with AFML labeling, purged
+k-fold, and bet sizing, see \cref{ch:afml-backtest} (Phase 14).
+
 \section{Exercises}
 
 \begin{enumerate}

@@ -13,6 +13,21 @@ pub enum BacktestError {
     DimensionMismatch(String),
     #[error("invalid event: {0}")]
     InvalidEvent(String),
+    #[error("invalid input: {0}")]
+    InvalidInput(String),
+}
+
+/// Result of a single backtest fold.
+#[derive(Debug, Clone)]
+pub struct BacktestResult {
+    pub total_return: f64,
+    pub sharpe: f64,
+    pub max_drawdown: f64,
+    pub n_trades: usize,
+    pub train_start: usize,
+    pub train_end: usize,
+    pub test_start: usize,
+    pub test_end: usize,
 }
 
 #[cfg(test)]

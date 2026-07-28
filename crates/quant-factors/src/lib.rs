@@ -35,11 +35,13 @@
 pub mod eigen;
 pub mod error;
 pub mod fama_french;
+pub mod models;
 pub mod pca;
 pub mod risk;
 
 pub use eigen::{deflate, power_method, top_k_eigen};
 pub use error::FactorError;
 pub use fama_french::{FF3Exposure, ff3_regression};
+pub use models::{FamaFrench3, Pca};
 pub use pca::{PcaResult, pca, pca_reconstruct, pca_transform};
 pub use risk::{RiskAttribution, risk_attribution};

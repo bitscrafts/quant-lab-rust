@@ -80,6 +80,28 @@ impl LabeledEvent {
     }
 }
 
+impl From<LabeledEvent> for i8 {
+    /// Convert to ternary label: Upper -> 1, Time -> 0, Lower -> -1.
+    fn from(event: LabeledEvent) -> Self {
+        match event.label {
+            TripleBarrierLabel::Upper => 1,
+            TripleBarrierLabel::Time => 0,
+            TripleBarrierLabel::Lower => -1,
+        }
+    }
+}
+
+impl From<&LabeledEvent> for i8 {
+    /// Convert to ternary label: Upper -> 1, Time -> 0, Lower -> -1.
+    fn from(event: &LabeledEvent) -> Self {
+        match event.label {
+            TripleBarrierLabel::Upper => 1,
+            TripleBarrierLabel::Time => 0,
+            TripleBarrierLabel::Lower => -1,
+        }
+    }
+}
+
 /// Convert a `TripleBarrierLabel` to a binary outcome:
 /// Upper -> 1, Lower -> 0, Time -> 1 iff `event.return_pct >= min_return`.
 pub fn to_binary_label_helper(

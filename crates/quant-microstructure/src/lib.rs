@@ -34,11 +34,13 @@
 pub mod error;
 pub mod flow;
 pub mod impact;
+pub mod models;
 pub mod orderbook;
 pub mod types;
 
 pub use error::MicroError;
 pub use flow::{order_flow_imbalance, trade_imbalance, vwap};
 pub use impact::{ExecutionCost, execution_cost, linear_impact, sqrt_impact};
+pub use models::{LinearImpactModel, SqrtImpactModel};
 pub use orderbook::OrderBook;
 pub use types::{BookSnapshot, Fill, Level, Order, Side, Trade};
