@@ -119,7 +119,7 @@ are bundled in the book directory:
 | Ch | Title | Spec | Crate | LaTeX | Status |
 |----|-------|------|-------|-------|--------|
 | 13 | Market Microstructure | Phase 13 | `quant-microstructure` | `chapters/ch13.tex` | **done** |
-| 14 | AFML: From Research to Production | Phase 14 | `quant-backtest` | `chapters/ch14.tex` | planned |
+| 14 | AFML: From Research to Production | Phase 14 | `quant-backtest` | `chapters/ch14.tex` | **done** |
 
 ## Appendices
 
@@ -154,7 +154,7 @@ Figures live in `figures/` and are included via `\input{figures/filename}`:
 | `efficient-frontier.tex` | 11 | Mean-variance frontier | planned |
 | `pca-variance.tex` | 12 | PCA explained variance | planned |
 | `lob.tex` | 13 | Limit order book | planned |
-| `triple-barrier.tex` | 14 | Triple-barrier labeling | planned |
+| `triple-barrier.tex` | 14 | Triple-barrier labeling | **done** |
 
 ---
 

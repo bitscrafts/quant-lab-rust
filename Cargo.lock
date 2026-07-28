@@ -129,6 +129,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "quant-backtest"
+version = "0.1.0"
+dependencies = [
+ "approx",
+ "quant-core",
+ "quant-portfolio",
+ "quant-timeseries",
+ "thiserror",
+]
+
+[[package]]
 name = "quant-core"
 version = "0.1.0"
 dependencies = [

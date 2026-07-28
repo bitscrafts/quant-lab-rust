@@ -1,0 +1,17 @@
+[package]
+name = "quant-backtest"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+quant-core = { path = "../quant-core" }
+quant-timeseries = { path = "../quant-timeseries" }
+quant-portfolio = { path = "../quant-portfolio" }
+thiserror = "1.0"
+
+[dev-dependencies]
+approx = "0.5"
+quant-core = { path = "../quant-core" }
