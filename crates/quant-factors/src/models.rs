@@ -4,8 +4,8 @@
 //! `FactorModel` trait from quant-core.
 
 use crate::error::FactorError;
-use crate::fama_french::{ff3_regression, FF3Exposure};
-use crate::pca::{pca, pca_transform, PcaResult};
+use crate::fama_french::{FF3Exposure, ff3_regression};
+use crate::pca::{PcaResult, pca, pca_transform};
 use quant_core::FactorModel;
 
 /// PCA factor model.
@@ -87,11 +87,8 @@ impl FactorModel for Pca {
 
         // Reconstruct returns from factors
         let scores_matrix = vec![exposures.clone()];
-        let reconstructed = crate::pca::pca_reconstruct(
-            &scores_matrix,
-            &result.eigenvectors,
-            &result.mean,
-        );
+        let reconstructed =
+            crate::pca::pca_reconstruct(&scores_matrix, &result.eigenvectors, &result.mean);
 
         let factor_returns = reconstructed[0].clone();
 
@@ -202,12 +199,7 @@ impl FactorModel for FamaFrench3 {
         let factor_returns: Vec<f64> = self
             .factors
             .iter()
-            .map(|f| {
-                exp.alpha
-                    + exp.beta_mkt * f[0]
-                    + exp.beta_smb * f[1]
-                    + exp.beta_hml * f[2]
-            })
+            .map(|f| exp.alpha + exp.beta_mkt * f[0] + exp.beta_smb * f[1] + exp.beta_hml * f[2])
             .collect();
 
         // Idiosyncratic component: actual - predicted

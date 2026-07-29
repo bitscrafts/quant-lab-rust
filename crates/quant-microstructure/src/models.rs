@@ -99,7 +99,11 @@ impl OrderBookOps for OrderBook {
         Ok(())
     }
 
-    fn market_order(&mut self, is_buy: bool, quantity: f64) -> Result<Vec<Self::Trade>, Self::Error> {
+    fn market_order(
+        &mut self,
+        is_buy: bool,
+        quantity: f64,
+    ) -> Result<Vec<Self::Trade>, Self::Error> {
         let side = if is_buy { Side::Bid } else { Side::Ask };
         let quantity_u64 = quantity as u64;
 
@@ -183,22 +187,28 @@ mod tests {
         let mut book = OrderBook::new(1);
 
         // Add some asks
-        OrderBookOps::add_order(&mut book, Order {
-            id: 1,
-            side: Side::Ask,
-            price: 101,
-            quantity: 10,
-            timestamp: 1,
-        })
+        OrderBookOps::add_order(
+            &mut book,
+            Order {
+                id: 1,
+                side: Side::Ask,
+                price: 101,
+                quantity: 10,
+                timestamp: 1,
+            },
+        )
         .unwrap();
 
-        OrderBookOps::add_order(&mut book, Order {
-            id: 2,
-            side: Side::Ask,
-            price: 102,
-            quantity: 20,
-            timestamp: 2,
-        })
+        OrderBookOps::add_order(
+            &mut book,
+            Order {
+                id: 2,
+                side: Side::Ask,
+                price: 102,
+                quantity: 20,
+                timestamp: 2,
+            },
+        )
         .unwrap();
 
         // Market buy should fill against asks

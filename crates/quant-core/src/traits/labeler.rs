@@ -51,5 +51,9 @@ pub trait Labeler {
     ///     println!("Return: {:.2}%", event.return_pct * 100.0);
     /// }
     /// ```
-    fn label(&self, prices: &[f64], entry_indices: &[usize]) -> Result<Vec<Self::Event>, Self::Error>;
+    fn label(
+        &self,
+        prices: &[f64],
+        entry_indices: &[usize],
+    ) -> Result<Vec<Self::Event>, Self::Error>;
 }

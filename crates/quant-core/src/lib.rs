@@ -46,5 +46,5 @@ pub use series::{
 pub use sim::{Distribution, Normal, Rng, XorShift64, box_muller_normal, gbm_paths};
 pub use traits::{
     BetSizer, CrossValidator, FactorModel, Greeks, ImpactModel, Labeler, OptionPricer, OptionType,
-    OrderBookOps, SampleWeighter, StructuralBreak, StructuralBreakDetector, StochasticProcess,
+    OrderBookOps, SampleWeighter, StochasticProcess, StructuralBreak, StructuralBreakDetector,
 };

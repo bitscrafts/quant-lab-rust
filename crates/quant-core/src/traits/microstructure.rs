@@ -88,5 +88,9 @@ pub trait OrderBookOps {
     ///
     /// Returns an error if the order cannot be filled (e.g.,
     /// insufficient liquidity).
-    fn market_order(&mut self, is_buy: bool, quantity: f64) -> Result<Vec<Self::Trade>, Self::Error>;
+    fn market_order(
+        &mut self,
+        is_buy: bool,
+        quantity: f64,
+    ) -> Result<Vec<Self::Trade>, Self::Error>;
 }

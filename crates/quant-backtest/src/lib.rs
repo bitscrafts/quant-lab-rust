@@ -59,16 +59,18 @@ pub mod triple_barrier;
 pub mod walk_forward;
 pub mod weights;
 
-pub use backtest::{afml_backtest, AfmlBacktestConfig, AfmlBacktestResult, BetSizing};
+pub use backtest::{AfmlBacktestConfig, AfmlBacktestResult, BetSizing, afml_backtest};
 pub use error::{BacktestError, BacktestResult};
 pub use generic::{BacktestBuilder, GenericBacktest};
-pub use kelly::{compute_position_size, fractional_kelly, kelly_fraction, kelly_from_returns, PositionSize};
+pub use kelly::{
+    PositionSize, compute_position_size, fractional_kelly, kelly_fraction, kelly_from_returns,
+};
 pub use labelers::{DynamicBarrierLabeler, FixedHorizonLabeler, TrendScanningLabeler};
-pub use purged_kfold::{event_overlaps, purged_kfold_splits, PurgedKFoldConfig, PurgedSplit};
+pub use purged_kfold::{PurgedKFoldConfig, PurgedSplit, event_overlaps, purged_kfold_splits};
 pub use sizers::{EqualBetSizer, FixedBetSizer, KellyBetSizer};
 pub use triple_barrier::{
-    to_binary_label_helper, triple_barrier_label, LabeledEvent, TripleBarrierConfig,
-    TripleBarrierLabel,
+    LabeledEvent, TripleBarrierConfig, TripleBarrierLabel, to_binary_label_helper,
+    triple_barrier_label,
 };
-pub use walk_forward::{walk_forward_efficiency, WalkForward, WalkForwardConfig, WalkForwardSplit};
+pub use walk_forward::{WalkForward, WalkForwardConfig, WalkForwardSplit, walk_forward_efficiency};
 pub use weights::{average_uniqueness, concurrent_events, sample_weights};

@@ -116,10 +116,14 @@ mod tests {
     #[test]
     fn test_purged_kfold_no_leakage() {
         let events: Vec<LabeledEvent> = (0..10).map(|i| ev(i * 10, i * 10 + 3)).collect();
-        let splits = purged_kfold_splits(&events, 100, &PurgedKFoldConfig {
-            n_folds: 5,
-            embargo: 0,
-        });
+        let splits = purged_kfold_splits(
+            &events,
+            100,
+            &PurgedKFoldConfig {
+                n_folds: 5,
+                embargo: 0,
+            },
+        );
         assert_eq!(splits.len(), 5);
         for split in &splits {
             for &ti in &split.test_indices {
@@ -142,16 +146,23 @@ mod tests {
     fn test_purged_kfold_embargo() {
         // 20 events of width 2 bars, starting every 5 bars across 100 bars.
         let events: Vec<LabeledEvent> = (0..20).map(|i| ev(i * 5, i * 5 + 2)).collect();
-        let splits = purged_kfold_splits(&events, 100, &PurgedKFoldConfig {
-            n_folds: 4,
-            embargo: 5,
-        });
+        let splits = purged_kfold_splits(
+            &events,
+            100,
+            &PurgedKFoldConfig {
+                n_folds: 4,
+                embargo: 5,
+            },
+        );
         // Folds 0..3 have test [0,25), [25,50), [50,75), [75,100) and
         // embargo periods [25,30), [50,55), [75,80), [100,100) (empty).
         // Events with entry 25, 50, 75 fall in the first three embargo
         // periods, so total embargoed_count across folds = 3.
         let total_embargoed: usize = splits.iter().map(|s| s.embargoed_count).sum();
-        assert_eq!(total_embargoed, 3, "expected 3 embargoed events total, got {total_embargoed}");
+        assert_eq!(
+            total_embargoed, 3,
+            "expected 3 embargoed events total, got {total_embargoed}"
+        );
         // The last fold has an empty embargo (clamped at n_bars).
         assert_eq!(splits[3].embargoed_count, 0);
     }

@@ -68,8 +68,16 @@ pub fn compute_position_size(trade_returns: &[f64]) -> PositionSize {
             win_loss_ratio: 0.0,
         };
     }
-    let wins: Vec<f64> = trade_returns.iter().filter(|&&r| r > 0.0).copied().collect();
-    let losses: Vec<f64> = trade_returns.iter().filter(|&&r| r < 0.0).copied().collect();
+    let wins: Vec<f64> = trade_returns
+        .iter()
+        .filter(|&&r| r > 0.0)
+        .copied()
+        .collect();
+    let losses: Vec<f64> = trade_returns
+        .iter()
+        .filter(|&&r| r < 0.0)
+        .copied()
+        .collect();
     let p = wins.len() as f64 / trade_returns.len() as f64;
     let mean_win: f64 = if wins.is_empty() {
         0.0
@@ -81,7 +89,11 @@ pub fn compute_position_size(trade_returns: &[f64]) -> PositionSize {
     } else {
         -losses.iter().sum::<f64>() / losses.len() as f64
     };
-    let b = if mean_loss == 0.0 { 0.0 } else { mean_win / mean_loss };
+    let b = if mean_loss == 0.0 {
+        0.0
+    } else {
+        mean_win / mean_loss
+    };
     let kelly_full = kelly_fraction(p, b);
     PositionSize {
         kelly_full,
@@ -112,9 +124,7 @@ mod tests {
     #[test]
     fn test_kelly_from_returns_sixty_percent() {
         // 60% wins at +1, 40% losses at -1: b=1, p=0.6 -> f*=0.2
-        let returns = vec![
-            1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0,
-        ];
+        let returns = vec![1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0];
         let f = kelly_from_returns(&returns);
         assert!((f - 0.2).abs() < 1e-9);
     }

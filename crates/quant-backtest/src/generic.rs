@@ -153,10 +153,7 @@ where
             let final_equity = *equity.last().unwrap();
             let total_return = final_equity - 1.0;
 
-            let equity_returns: Vec<f64> = equity
-                .windows(2)
-                .map(|w| (w[1] / w[0]) - 1.0)
-                .collect();
+            let equity_returns: Vec<f64> = equity.windows(2).map(|w| (w[1] / w[0]) - 1.0).collect();
 
             let sharpe = if !equity_returns.is_empty() {
                 let mean_ret = equity_returns.iter().sum::<f64>() / equity_returns.len() as f64;
@@ -328,10 +325,7 @@ mod tests {
         let backtest = GenericBacktest::new(labeler, cv, sizer, 1);
 
         let prices: Vec<f64> = (0..50).map(|i| 100.0 + (i as f64) * 0.5).collect();
-        let returns: Vec<f64> = prices
-            .windows(2)
-            .map(|w| (w[1] / w[0]) - 1.0)
-            .collect();
+        let returns: Vec<f64> = prices.windows(2).map(|w| (w[1] / w[0]) - 1.0).collect();
 
         let mut returns_with_init = vec![0.0];
         returns_with_init.extend(returns);
@@ -364,10 +358,7 @@ mod tests {
             .build();
 
         let prices: Vec<f64> = (0..50).map(|i| 100.0 + (i as f64) * 0.5).collect();
-        let returns: Vec<f64> = prices
-            .windows(2)
-            .map(|w| (w[1] / w[0]) - 1.0)
-            .collect();
+        let returns: Vec<f64> = prices.windows(2).map(|w| (w[1] / w[0]) - 1.0).collect();
 
         let mut returns_with_init = vec![0.0];
         returns_with_init.extend(returns);

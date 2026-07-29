@@ -167,7 +167,12 @@ fn label_one(
     let lower_px = p_entry * (1.0 + config.lower_barrier);
     let last = (entry_index + config.time_barrier).min(prices.len() - 1);
 
-    for (t, &p) in prices.iter().enumerate().take(last + 1).skip(entry_index + 1) {
+    for (t, &p) in prices
+        .iter()
+        .enumerate()
+        .take(last + 1)
+        .skip(entry_index + 1)
+    {
         if p >= upper_px {
             return Ok(LabeledEvent {
                 entry_index,

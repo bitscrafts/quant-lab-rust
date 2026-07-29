@@ -5,12 +5,14 @@
 //! and reports the distribution of labels, average holding period, and
 //! per-event returns.
 
-use quant_backtest::{triple_barrier_label, TripleBarrierConfig, TripleBarrierLabel};
+use quant_backtest::{TripleBarrierConfig, TripleBarrierLabel, triple_barrier_label};
 
 /// Deterministic LCG so the demo is reproducible without a `rand` dep.
 /// Returns a value in [0, 1).
 fn lcg(state: &mut u64) -> f64 {
-    *state = state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+    *state = state
+        .wrapping_mul(6364136223846793005)
+        .wrapping_add(1442695040888963407);
     // Use the top 32 bits, scale to [0, 1).
     let x = (*state >> 32) as u32;
     (x as f64) / (u32::MAX as f64 + 1.0)
@@ -60,9 +62,18 @@ fn main() {
 
     println!("=== Triple-Barrier Labeling Demo ===");
     println!("Bars: {n_bars}, entries: {n}");
-    println!("  Upper (profit-taking): {upper:>3} ({:.1}%)", 100.0 * upper as f64 / n as f64);
-    println!("  Lower (stop-loss):     {lower:>3} ({:.1}%)", 100.0 * lower as f64 / n as f64);
-    println!("  Time  (timeout):       {time:>3} ({:.1}%)", 100.0 * time as f64 / n as f64);
+    println!(
+        "  Upper (profit-taking): {upper:>3} ({:.1}%)",
+        100.0 * upper as f64 / n as f64
+    );
+    println!(
+        "  Lower (stop-loss):     {lower:>3} ({:.1}%)",
+        100.0 * lower as f64 / n as f64
+    );
+    println!(
+        "  Time  (timeout):       {time:>3} ({:.1}%)",
+        100.0 * time as f64 / n as f64
+    );
     println!("Avg holding period: {avg_hold:.2} bars");
     println!("Avg return per trade: {avg_ret:+.4}");
     println!();

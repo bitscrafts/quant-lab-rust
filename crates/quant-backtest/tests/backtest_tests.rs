@@ -9,10 +9,10 @@
 #![allow(clippy::useless_vec)]
 
 use quant_backtest::{
-    afml_backtest, average_uniqueness, concurrent_events, compute_position_size,
-    fractional_kelly, kelly_fraction, kelly_from_returns, purged_kfold_splits, sample_weights,
-    triple_barrier_label, AfmlBacktestConfig, BetSizing, LabeledEvent, PurgedKFoldConfig,
-    TripleBarrierConfig, TripleBarrierLabel,
+    AfmlBacktestConfig, BetSizing, LabeledEvent, PurgedKFoldConfig, TripleBarrierConfig,
+    TripleBarrierLabel, afml_backtest, average_uniqueness, compute_position_size,
+    concurrent_events, fractional_kelly, kelly_fraction, kelly_from_returns, purged_kfold_splits,
+    sample_weights, triple_barrier_label,
 };
 
 fn cfg(upper: f64, lower: f64, time: usize) -> TripleBarrierConfig {
@@ -148,8 +148,7 @@ fn t09_purged_kfold_no_leakage() {
             for &tr in &split.train_indices {
                 let ev_tr = &events[tr];
                 assert!(
-                    ev_tr.exit_index <= ev_t.entry_index
-                        || ev_tr.entry_index >= ev_t.exit_index,
+                    ev_tr.exit_index <= ev_t.entry_index || ev_tr.entry_index >= ev_t.exit_index,
                     "train event {tr:?} overlaps test event {ti:?}"
                 );
             }
@@ -212,7 +211,10 @@ fn t13_kelly_from_returns() {
 fn t14_position_size_half_kelly() {
     // Half Kelly = fraction * full Kelly. With p=0.6, b=1.0 -> full=0.2, half=0.1.
     let half = fractional_kelly(0.6, 1.0, 0.5);
-    assert!((half - 0.1).abs() < 1e-9, "expected half-Kelly=0.1, got {half}");
+    assert!(
+        (half - 0.1).abs() < 1e-9,
+        "expected half-Kelly=0.1, got {half}"
+    );
     let returns: Vec<f64> = vec![1.0, -1.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0, 1.0, 1.0];
     let pos = compute_position_size(&returns);
     assert!((pos.kelly_full - 0.2).abs() < 1e-6);

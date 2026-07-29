@@ -6,8 +6,8 @@
 //! how purging + embargo prevent leakage from overlapping events.
 
 use quant_backtest::{
-    purged_kfold_splits, sample_weights, triple_barrier_label, LabeledEvent, PurgedKFoldConfig,
-    TripleBarrierConfig, TripleBarrierLabel,
+    LabeledEvent, PurgedKFoldConfig, TripleBarrierConfig, TripleBarrierLabel, purged_kfold_splits,
+    sample_weights, triple_barrier_label,
 };
 
 fn main() {
@@ -74,8 +74,7 @@ fn main() {
             for &tr in &split.train_indices {
                 let ev_tr = &events[tr];
                 assert!(
-                    ev_tr.exit_index <= ev_t.entry_index
-                        || ev_tr.entry_index >= ev_t.exit_index,
+                    ev_tr.exit_index <= ev_t.entry_index || ev_tr.entry_index >= ev_t.exit_index,
                     "leak: train event {tr:?} overlaps test event {ti:?}"
                 );
             }

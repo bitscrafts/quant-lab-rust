@@ -5,9 +5,9 @@
 //! turns a price series into a risk-aware backtest report.
 
 use crate::error::BacktestError;
-use crate::kelly::{compute_position_size, PositionSize};
-use crate::purged_kfold::{purged_kfold_splits, PurgedKFoldConfig, PurgedSplit};
-use crate::triple_barrier::{triple_barrier_label, LabeledEvent, TripleBarrierConfig};
+use crate::kelly::{PositionSize, compute_position_size};
+use crate::purged_kfold::{PurgedKFoldConfig, PurgedSplit, purged_kfold_splits};
+use crate::triple_barrier::{LabeledEvent, TripleBarrierConfig, triple_barrier_label};
 use crate::weights::sample_weights;
 
 /// Bet sizing method.
@@ -69,7 +69,9 @@ pub fn afml_backtest(
     // Generate entry indices at fixed step.
     let entry_indices: Vec<usize> = (0..prices.len())
         .step_by(config.entry_step)
-        .take_while(|&i| i + config.barrier_config.time_barrier < prices.len() || i < prices.len() - 1)
+        .take_while(|&i| {
+            i + config.barrier_config.time_barrier < prices.len() || i < prices.len() - 1
+        })
         .collect();
 
     let events = triple_barrier_label(prices, &entry_indices, &config.barrier_config)?;
@@ -88,8 +90,14 @@ pub fn afml_backtest(
     let position_size = compute_position_size(&trade_returns);
     let size_per_trade: Vec<f64> = match config.bet_sizing {
         BetSizing::Equal => trade_returns.iter().map(|_| 1.0).collect(),
-        BetSizing::KellyFull => trade_returns.iter().map(|_| position_size.kelly_full.max(0.0)).collect(),
-        BetSizing::KellyHalf => trade_returns.iter().map(|_| position_size.kelly_half.max(0.0)).collect(),
+        BetSizing::KellyFull => trade_returns
+            .iter()
+            .map(|_| position_size.kelly_full.max(0.0))
+            .collect(),
+        BetSizing::KellyHalf => trade_returns
+            .iter()
+            .map(|_| position_size.kelly_half.max(0.0))
+            .collect(),
         BetSizing::Fixed(f) => trade_returns.iter().map(|_| f.max(0.0)).collect(),
     };
 
@@ -144,8 +152,7 @@ fn sharpe(returns: &[f64]) -> f64 {
     }
     let n = returns.len() as f64;
     let mean: f64 = returns.iter().sum::<f64>() / n;
-    let var: f64 =
-        returns.iter().map(|r| (r - mean).powi(2)).sum::<f64>() / (n - 1.0);
+    let var: f64 = returns.iter().map(|r| (r - mean).powi(2)).sum::<f64>() / (n - 1.0);
     let std = var.sqrt();
     if std == 0.0 {
         return 0.0;

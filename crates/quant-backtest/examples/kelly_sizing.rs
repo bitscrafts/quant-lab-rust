@@ -6,7 +6,7 @@
 //! the recommended position size for each.
 
 use quant_backtest::{
-    compute_position_size, fractional_kelly, kelly_fraction, kelly_from_returns, PositionSize,
+    PositionSize, compute_position_size, fractional_kelly, kelly_fraction, kelly_from_returns,
 };
 
 fn summary(name: &str, pos: &PositionSize) {

@@ -40,7 +40,10 @@ impl FixedHorizonLabeler {
     /// * `horizon` - Number of bars to look ahead
     /// * `min_return` - Minimum return threshold for positive label
     pub fn new(horizon: usize, min_return: f64) -> Self {
-        Self { horizon, min_return }
+        Self {
+            horizon,
+            min_return,
+        }
     }
 }
 
@@ -49,7 +52,11 @@ impl Labeler for FixedHorizonLabeler {
     type Config = (); // No additional config needed
     type Error = BacktestError;
 
-    fn label(&self, prices: &[f64], entry_indices: &[usize]) -> Result<Vec<Self::Event>, Self::Error> {
+    fn label(
+        &self,
+        prices: &[f64],
+        entry_indices: &[usize],
+    ) -> Result<Vec<Self::Event>, Self::Error> {
         if prices.is_empty() {
             return Err(BacktestError::InsufficientData(
                 "prices cannot be empty".to_string(),
@@ -155,18 +162,12 @@ impl DynamicBarrierLabeler {
         }
 
         // Compute log returns
-        let returns: Vec<f64> = window
-            .windows(2)
-            .map(|w| (w[1] / w[0]).ln())
-            .collect();
+        let returns: Vec<f64> = window.windows(2).map(|w| (w[1] / w[0]).ln()).collect();
 
         // Sample standard deviation
         let mean: f64 = returns.iter().sum::<f64>() / returns.len() as f64;
-        let variance: f64 = returns
-            .iter()
-            .map(|&r| (r - mean).powi(2))
-            .sum::<f64>()
-            / (returns.len() - 1) as f64;
+        let variance: f64 =
+            returns.iter().map(|&r| (r - mean).powi(2)).sum::<f64>() / (returns.len() - 1) as f64;
 
         variance.sqrt()
     }
@@ -177,7 +178,11 @@ impl Labeler for DynamicBarrierLabeler {
     type Config = ();
     type Error = BacktestError;
 
-    fn label(&self, prices: &[f64], entry_indices: &[usize]) -> Result<Vec<Self::Event>, Self::Error> {
+    fn label(
+        &self,
+        prices: &[f64],
+        entry_indices: &[usize],
+    ) -> Result<Vec<Self::Event>, Self::Error> {
         if prices.is_empty() {
             return Err(BacktestError::InsufficientData(
                 "prices cannot be empty".to_string(),
@@ -341,7 +346,11 @@ impl Labeler for TrendScanningLabeler {
     type Config = ();
     type Error = BacktestError;
 
-    fn label(&self, prices: &[f64], entry_indices: &[usize]) -> Result<Vec<Self::Event>, Self::Error> {
+    fn label(
+        &self,
+        prices: &[f64],
+        entry_indices: &[usize],
+    ) -> Result<Vec<Self::Event>, Self::Error> {
         if prices.is_empty() {
             return Err(BacktestError::InsufficientData(
                 "prices cannot be empty".to_string(),
