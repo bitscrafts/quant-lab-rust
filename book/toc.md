@@ -120,14 +120,17 @@ are bundled in the book directory:
 |----|-------|------|-------|-------|--------|
 | 13 | Market Microstructure | Phase 13 | `quant-microstructure` | `chapters/ch13.tex` | **done** |
 | 14 | AFML: From Research to Production | Phase 14 | `quant-backtest` | `chapters/ch14.tex` | **done** |
+| 15 | quant-lib: The Unified Facade | Phase 15 | `quant-lib` | `chapters/ch15.tex` | **done** |
 
 ## Appendices
 
 | App | Title | LaTeX | Status |
 |-----|-------|-------|--------|
-| A | Mathematical Notation | `chapters/appA.tex` | planned |
-| B | Rust Patterns for Finance | `chapters/appB.tex` | planned |
-| C | Dataset Sources | `chapters/appC.tex` | planned |
+| A | Mathematical Notation | `chapters/appA.tex` | **done** |
+| B | Rust Patterns for Finance | `chapters/appB.tex` | **done** |
+| C | Dataset Sources | `chapters/appC.tex` | **done** |
+| D | Exercise Solutions | `chapters/appD.tex` | **done** |
+| E | Mathematical Derivations | `chapters/appE.tex` | **done** |
 
 ---
 

@@ -1,0 +1,591 @@
+\chapter{Exercise Solutions}
+\label{app:solutions}
+
+This appendix provides worked solutions to the exercises at the end of
+each chapter. The solutions give the approach, the key code or formula,
+and the expected result. Where an exercise asks for experimentation, we
+report the qualitative finding rather than a specific number---the
+number depends on the random seed and data window.
+
+\begin{keyinsight}
+The exercises are designed to be reproducible from the bundled data
+and the companion crates. Every solution below can be verified by
+running the corresponding example in \crate{quant-lib} with minor
+modifications. The goal is understanding, not memorisation.
+\end{keyinsight}
+
+\section*{Chapter 1: Credit Card Fraud}
+
+\paragraph{1. Threshold Sensitivity.}
+Sweep the threshold over $\{2.0, 2.5, 3.0, 3.5, 4.0\}$, computing
+precision and recall at each. Lowering the threshold raises recall
+(more transactions flagged) but lowers precision (more false alarms).
+The F1-maximising threshold is the one where the precision--recall
+curve has its knee---typically around $3.0$--$3.5$ for the bundled
+sample. The lesson: there is no ``correct'' threshold; the choice
+depends on the cost of a false negative versus a false positive.
+
+\paragraph{2. Feature Analysis.}
+Modify \func{predict} to return the per-feature z-scores alongside
+the boolean. The most discriminative feature is the one whose
+z-score most consistently exceeds the threshold on fraud samples.
+In the anonymised PCA dataset (\texttt{V1}--\texttt{V28}), features
+\texttt{V14} and \texttt{V4} typically dominate---they carry the
+highest mean $|z|$ on the fraud rows.
+
+\paragraph{3. Train/Test Split.}
+Split chronologically because fraud patterns evolve: a random split
+leaks future information into training. The test-set performance is
+almost always worse than training-set: precision drops by 10--20\%
+because the z-score statistics are calibrated on the earlier period.
+This is the simplest demonstration of why time-series data must
+never be shuffled before splitting.
+
+\paragraph{4. Amount Feature.}
+Add \texttt{amount} as a z-scored feature. Performance barely moves
+because the PCA features already absorb most of the signal; the
+raw amount is weakly correlated with fraud after conditioning on the
+anonymised features. The lesson: not every available feature adds
+value---check before including.
+
+\paragraph{5. Trait Extraction.}
+The \texttt{AnomalyDetector} trait should require:
+\begin{lstlisting}[language=Rust]
+pub trait AnomalyDetector {
+    fn fit(&mut self, x: &[Vec<f64>]);
+    fn predict(&self, x: &[f64]) -> AnomalyResult;
+}
+
+pub struct AnomalyResult {
+    pub is_anomaly: bool,
+    pub score: f64,
+    pub triggering_features: Vec<usize>,
+}
+\end{lstlisting}
+\func{fit} learns the per-feature mean and std; \func{predict}
+returns the z-score, the boolean, and which features exceeded the
+threshold. This is the same shape as \func{BinaryClassifier} plus
+\func{Scorer} from \crate{qf-02-loan}, generalised to multivariate
+input.
+
+\section*{Chapter 2: Loan Default}
+
+\paragraph{1. Weight Sensitivity.}
+Sweep each weight $\pm 50\%$ while holding the others fixed. The AUC
+moves by at most a few points, indicating the linear scorer is
+robust to moderate weight mis-specification. The most sensitive
+feature is the one whose weight change moves AUC the most---typically
+\texttt{debt\_to\_income} or \texttt{credit\_score}, depending on the
+dataset.
+
+\paragraph{2. Threshold Selection.}
+The sigmoid output $\sigma(\mathbf{w}^\top \mathbf{x})$ is a
+probability. Sweep the threshold from $0.01$ to $0.99$; the F1
+maximum is typically near the base rate (the fraction of defaults
+in the data), because that is where precision and recall balance
+for a balanced classifier.
+
+\paragraph{3. Feature Importance.}
+Train a single-feature scorer for each feature and compute its AUC.
+Rank by AUC. The ranking usually matches the weight magnitude from
+the multivariate scorer, but not always: correlated features can
+split importance, so a feature that is weak alone can be strong in
+combination.
+
+\paragraph{4. Cross-Validation.}
+Split into 5 chronological folds. The AUC standard deviation across
+folds is typically 0.02--0.05. A large std (relative to the mean)
+indicates the model is sensitive to the training window---a sign of
+instability, not robustness.
+
+\paragraph{5. Calibration Plot.}
+Bin predictions into deciles and plot the mean predicted probability
+against the empirical default rate in each bin. A well-calibrated
+model lies on the diagonal; a miscalibrated one is systematically
+above (overconfident) or below (underconfident). The linear scorer
+is usually underconfident at high probabilities because the sigmoid
+saturates.
+
+\section*{Chapter 3: Market Data}
+
+\paragraph{1. Candlestick Patterns.}
+Doji: $|O - C| < 0.1\%$ of the range $H - L$. Hammer: small body
+($|O - C| < 0.3 (H - L)$) and long lower shadow
+($\min(O, C) - L > 2 |O - C|$). Both are one-line tests inside the
+\func{Ohlcv} struct's accessor methods.
+
+\paragraph{2. Volume Analysis.}
+\func{volume\_ma} is a simple \func{sma} applied to the volume field.
+A day with volume $> 2 \times \text{MA}_N$ is flagged as high-volume.
+On the bundled \texttt{stock\_prices.csv}, roughly 5--8\% of days
+exceed 2x; these often coincide with earnings or macro releases.
+
+\paragraph{3. Bollinger Bands.}
+Upper $= \text{SMA}_N + 2 \sigma_N$, lower $= \text{SMA}_N - 2
+\sigma_N$, where $\sigma_N$ is the rolling standard deviation (use
+\func{rolling\_std\_dev} from \crate{quant-core}). Prices touch the
+upper band on $\sim 5\%$ of days under a normal approximation,
+confirming the bands are a 2-sigma envelope.
+
+\paragraph{4. MACD.}
+$\text{MACD} = \text{EMA}_{12} - \text{EMA}_{26}$,
+$\text{signal} = \text{EMA}_9(\text{MACD})$. A buy signal fires when
+MACD crosses above its signal line. The indicator is a
+momentum oscillator; it lags the price turn because EMAs are
+backward-looking.
+
+\paragraph{5. Backtest.}
+Buy at the close on a golden cross, sell at the close on a death
+cross. On the synthetic series, the strategy is profitable only if
+the trend persists longer than the lag; in choppy markets it
+whipsaws and loses. The lesson: SMA crossover is a trend filter,
+not a predictor---it works in regimes and fails in transitions.
+
+\section*{Chapter 4: Returns and Volatility}
+
+\paragraph{1. Return Conversion.}
+$r^{\text{log}} = \ln(1 + r^{\text{simple}})$ and
+$r^{\text{simple}} = e^{r^{\text{log}}} - 1$. A property test
+generates random simple returns, converts to log and back, and
+asserts the round-trip error is below $10^{-15}$. The identity is
+exact in real arithmetic; floating-point round-off is the only
+source of error.
+
+\paragraph{2. Annualisation Sanity Check.}
+Resample daily returns to weekly and monthly. Annualised volatility
+is $\sigma_{\text{daily}} \sqrt{252} \approx
+\sigma_{\text{weekly}} \sqrt{52} \approx
+\sigma_{\text{monthly}} \sqrt{12}$. The three estimates agree to
+within sampling noise; the discrepancy is $O(1/\sqrt{T})$ where $T$
+is the number of observations at each frequency.
+
+\paragraph{3. Calmar Ratio.}
+$\text{Calmar} = \text{annualised return} / |\text{max drawdown}|$.
+On a synthetic strategy with 12\% annual return and 15\% max
+drawdown, Calmar $= 0.8$. Sharpe penalises all volatility; Calmar
+penalises only the worst drawdown. A strategy with high Sharpe but
+deep drawdown has a low Calmar---common in trend-following.
+
+\paragraph{4. Rolling Sharpe.}
+Windowed Sharpe $= \frac{\bar{r}_N - r_f}{\sigma_N} \sqrt{m}$. It
+dips during volatile periods (e.g., a 2-sigma shock raises $\sigma_N$
+immediately but the mean responds slowly). The rolling chart
+visualises regime changes that the full-sample Sharpe hides.
+
+\paragraph{5. Drawdown with Recovery.}
+Average drawdown $= \frac{1}{T} \sum_t \min(0, \text{DD}_t)$.
+Proportion in drawdown $= \frac{1}{T} \sum_t
+\mathbb{1}[\text{DD}_t < 0]$. A buy-and-hold equity curve spends
+60--80\% of its time in drawdown---the ``tyranny of drawdowns'' that
+motivates risk-managed strategies.
+
+\section*{Chapter 5: Backtesting}
+
+\paragraph{1. Cost Sensitivity.}
+For $\tau \in \{0, 0.001, 0.0025, 0.005, 0.01\}$, total return
+declines roughly linearly in $\tau$ because turnover is roughly
+constant. The strategy stops being profitable when
+$\tau \times \text{turnover} > \text{gross edge}$. For the 10/30
+crossover on the synthetic series, this happens near
+$\tau \approx 0.005$ (50 bps round-trip).
+
+\paragraph{2. Parameter Sensitivity.}
+The $(S, L)$ that maximises Sharpe is not the one that maximises
+total return: a faster crossover (small $S, L$) has higher gross
+return but higher turnover, so net return (after costs) is lower.
+The Sharpe-maximising configuration is typically $(10, 50)$ or
+$(20, 100)$---slow enough to filter noise, fast enough to catch
+trends.
+
+\paragraph{3. EMA Crossover.}
+EMA crossover has lower turnover than SMA because EMAs decay
+smoothly rather than dropping observations. On the same data, the
+EMA strategy typically trades 20--30\% less and has a comparable or
+slightly higher Sharpe. The trade-off: EMAs react faster but are
+more sensitive to outliers.
+
+\paragraph{4. Position Sizing.}
+With fraction $f = 0.5$, the equity curve is flatter (lower return,
+lower volatility, shallower drawdowns). The trade-off is
+return-for-risk: $f = 0.5$ roughly halves both the annual return
+and the max drawdown. Full-Kelly ($f = f^*$) maximises log growth;
+fractional Kelly trades growth for safety.
+
+\paragraph{5. Walk-Forward.}
+Tune $(S, L)$ on the first 180 bars; freeze; evaluate on the last
+72. The out-of-sample Sharpe is typically 30--60\% of the in-sample
+Sharpe---a WFE of 0.3--0.6. A WFE below 0.3 signals overfitting; the
+in-sample optimum exploited noise.
+
+\section*{Chapter 6: Statistical Foundations}
+
+\paragraph{1. Sample vs Population Variance.}
+For $\{1,2,3,4,5\}$: population variance $= 2.0$ (denominator $n=5$),
+sample variance $= 2.5$ (denominator $n-1=4$). The bias is
+$(n-1)/n = 0.8$, a 20\% underestimate. It matters for small samples
+and for any statistic that scales with variance (Sharpe, t-stat).
+Always use $n-1$ for sample-based estimators.
+
+\paragraph{2. Skewness Sign.}
+Negative skew: mix a normal with a few large negative draws
+(e.g., $x = N(0,1)$ with probability 0.9, $x = -5$ with probability
+0.1). Positive skew: the mirror. \func{skewness} returns the correct
+sign. Equity returns typically have \emph{negative} skew---large
+drops are more frequent than large jumps.
+
+\paragraph{3. RNG Period.}
+A test asserts the first 1000 outputs from seed 42 are distinct.
+``Distinct'' is necessary (a PRNG that repeats early is broken) but
+not sufficient (a PRNG can be distinct yet correlated---e.g., a
+counter). The full statistical battery (\texttt{TestU01},
+\texttt{DieHarder}) checks uniformity, independence, and
+higher-order structure.
+
+\paragraph{4. GBM Convergence.}
+With $S_0 = 100$, $\mu = 0.05$, $\sigma = 0.2$, $T = 1$, the
+analytical $\E[S_T] = 100 \cdot e^{0.05} = 105.13$. A 10\,000-path
+Monte Carlo gives $\hat{\E}[S_T] \approx 105.1 \pm 0.2$ (the SE
+scales as $\sigma \sqrt{T} / \sqrt{N}$). The estimate is within
+one SE of the truth---the small discrepancy is sampling noise, not
+bias.
+
+\paragraph{5. Jump-Diffusion.}
+Add $J \sim N(0, 0.05^2)$ with intensity $\lambda$. As $\lambda$
+grows from 0 to 1 (one jump per year on average), the excess
+kurtosis of terminal prices rises from 0 to $\sim 3$--$5$. Jumps
+inject fat tails that GBM alone cannot reproduce---the basis of
+the Merton model.
+
+\section*{Chapter 7: Time Series}
+
+\paragraph{1. Partial Autorrelation.}
+The PACF via Yule-Walker solves the linear system
+$\mathbf{R} \boldsymbol{\phi} = \mathbf{r}$ where $R_{ij} =
+\rho_{|i-j|}$ and $r_i = \rho_i$. For AR(2) with $\phi_1 = 0.5$,
+$\phi_2 = -0.3$, PACF is $\sim 0.5$ at lag 1, $\sim -0.3$ at lag 2,
+and $\sim 0$ beyond---the cutoff at lag $p = 2$ identifies the
+order.
+
+\paragraph{2. KPSS Test.}
+KPSS tests $H_0$: stationary (opposite of ADF). On white noise, both
+ADF and KPSS agree (stationary). On a random walk, ADF fails to
+reject (non-stationary) and KPSS rejects (non-stationary). On
+fractionally differenced series with $d < d^\star$, the two can
+disagree: ADF may reject (stationary by unit-root criterion) while
+KPSS rejects (non-stationary by trend criterion). The disagreement
+signals a long-memory process---neither pure stationary nor pure
+unit root.
+
+\paragraph{3. Real Returns.}
+For $\sigma \in \{0.1, 0.2, 0.4\}$, the minimum $d^\star$ for
+stationarity is approximately $0.35$--$0.45$ and is largely
+insensitive to $\sigma$. The reason: $d^\star$ depends on the
+memory structure (how slowly the ACF decays), not the scale. Higher
+$\sigma$ adds noise but does not change the differencing order
+needed to remove the unit root.
+
+\paragraph{4. Expanding-Window Frac-Diff.}
+The expanding window uses all available history for early points,
+truncating the weight sequence at the available length rather than
+dropping the first $K-1$ points. The trade-off: more data for early
+points (no warm-up loss) but the early values are biased because
+they use fewer terms of the infinite series. Fixed-width is
+consistent (every point uses the same number of terms); expanding
+is efficient (no data loss) but heterogeneous.
+
+\paragraph{5. Lag Selection for ADF.}
+AIC $= n \ln(\hat{\sigma}^2) + 2k$ where $k$ is the number of lags.
+Sweep $k$ from 0 to 10, pick the AIC-minimising $k$, then run ADF.
+The stationarity conclusion rarely changes for well-behaved series;
+it can change for borderline series where the lag structure affects
+the residual autocorrelation. AIC-based selection is more
+principled than a fixed lag.
+
+\section*{Chapter 8: Volatility Models}
+
+\paragraph{1. EGARCH.}
+$\log \sigma_t^2 = \omega + \alpha g(z_{t-1}) + \beta \log
+\sigma_{t-1}^2$ where $g(z) = \theta z + \gamma(|z| - \E|z|)$. The
+$\theta$ term captures the leverage effect: negative returns
+($z < 0$) raise $\log \sigma^2$ more than positive ones. On equity
+returns, EGARCH's log-likelihood typically exceeds GARCH(1,1) by
+5--15 points, with $\theta < 0$ significantly.
+
+\paragraph{2. GJR-GARCH.}
+$\sigma_t^2 = \omega + \alpha r_{t-1}^2 + \gamma
+\mathbb{1}_{r_{t-1}<0} r_{t-1}^2 + \beta \sigma_{t-1}^2$. On equity
+index returns, $\gamma$ is typically $0.03$--$0.10$ and
+significant, confirming the leverage effect. The effective
+coefficient on negative shocks is $\alpha + \gamma$, larger than
+$\alpha$ alone.
+
+\paragraph{3. Forecast Evaluation.}
+Fit on 80\%, forecast the conditional variance on the remaining 20\%.
+The GARCH forecast converges to the long-run variance
+$\sigma_\infty^2 = \omega / (1 - \alpha - \beta)$ as the horizon
+grows. The mean squared error of the variance forecast is typically
+20--40\% lower than the EWMA forecast, because GARCH adapts to the
+estimated persistence while EWMA uses a fixed $\lambda = 0.94$.
+
+\paragraph{4. Student-$t$ Innovations.}
+Replace the Gaussian density with the Student-$t$ density with $\nu$
+degrees of freedom. On heavy-tailed returns, the fitted $\nu$ is
+typically 4--7, and the $t$-GARCH log-likelihood exceeds the Gaussian
+GARCH by 10--30 points. The improvement is largest in the tails,
+which the Gaussian model underweights.
+
+\paragraph{5. Long-Memory FIGARCH.}
+FIGARCH($1,d,1$) replaces the geometric decay with a hyperbolic
+$(1-L)^d$ filter on the variance recursion. The half-life of
+shocks grows from $\sim 10$ days (GARCH(1,1)) to $\sim 30$--$50$
+days (FIGARCH), reflecting the slow decay of volatility
+autocorrelation observed in high-frequency data.
+
+\section*{Chapter 9: Stochastic Processes}
+
+\paragraph{1. Control Variates.}
+$\hat{C}_{\text{cv}} = \hat{C} - \beta(\hat{M} - \E[S_T])$ with
+$\beta = \Cov(\text{payoff}, S_T) / \Var(S_T)$. For a call option,
+$\beta \approx e^{-rT} N(d_1)$ (the delta). The standard error drops
+by a factor of $\sqrt{1 - \rho^2}$ where $\rho$ is the
+correlation between payoff and $S_T$---typically 70--90\% for
+vanilla calls, giving a 2--3x SE reduction.
+
+\paragraph{2. Asian Option.}
+Time-step the GBM over $n = 252$ daily closes, compute $\bar S =
+\frac{1}{n} \sum S_{t_k}$, payoff $\max(\bar S - K, 0)$. The Asian
+price is below the European price (averaging reduces variance, so
+the option is cheaper). The SE is comparable to the European for
+the same $N$, because the variance reduction from averaging is in
+the payoff, not the estimator.
+
+\paragraph{3. Euler vs Exact.}
+Euler discretisation $S_{t+\Delta t} = S_t(1 + \mu \Delta t + \sigma
+\sqrt{\Delta t} Z)$ has bias $O(\Delta t)$ relative to the exact
+$S_T = S_0 \exp((\mu - \tfrac{1}{2}\sigma^2)T + \sigma W_T)$. At
+$\Delta t = 1/252$, the bias in the mean is $\sim 0.01\%$---negligible
+for pricing but visible in high-precision convergence studies.
+
+\paragraph{4. Confidence Intervals.}
+For $N = 10\,000$, the 95\% CI is $\hat{C} \pm 1.96 \cdot
+\text{SE}$. Repeating 1000 times, the fraction of CIs covering the
+BS price is $\sim 94$--$96\%$, consistent with the nominal 95\%.
+Coverage below 93\% signals a bug (e.g., wrong discounting); coverage
+above 97\% suggests the SE is overestimated.
+
+\section*{Chapter 10: Options Pricing}
+
+\paragraph{1. Black-Scholes with Dividends.}
+Replace $S_0$ with $S_0 e^{-qT}$. The call becomes $C = S_0 e^{-qT}
+N(d_1) - K e^{-rT} N(d_2)$ with $d_1 = \frac{\ln(S_0/K) + (r - q +
+\tfrac{1}{2}\sigma^2)T}{\sigma\sqrt{T}}$. Delta $= e^{-qT} N(d_1)$
+(the dividend yield discounts the delta). The forward price
+$F = S_0 e^{(r-q)T}$ replaces $S_0 e^{rT}$ in put-call parity.
+
+\paragraph{2. Local Volatility.}
+$\sigma(S, t) = \sigma_0 + \alpha (S - S_0)^2$ creates a smile: ATM
+has vol $\sigma_0$, OTM and ITM have higher vol. Explicit Euler on
+a $(S, t)$ grid with $\Delta S = 1$, $\Delta t = 1/252$ prices the
+option. The IV surface recovered by inverting BS on the grid prices
+is convex in moneyness, matching the local-vol shape.
+
+\paragraph{3. Heston Model.}
+$dv_t = \kappa(\theta - v_t) dt + \xi \sqrt{v_t} dW^{(v)}_t$ with
+$\Cov(dW, dW^{(v)}) = \rho \, dt$. Monte Carlo with full truncation
+($v_t = \max(v_{t-1}, 0)$) generates call prices across a strip of
+strikes. The IV smile is skewed: negative $\rho$ produces a
+downward-sloping skew (puts have higher IV), matching equity
+markets.
+
+\paragraph{4. Vega-Clipped Bisection.}
+For $S_0 = 1000$, $K = 10$, the call price equals the intrinsic
+$990 \cdot e^{-rT}$ to machine precision. Vega is essentially zero
+(dividing by $d_2 \to \infty$), so Newton's method diverges. The fix:
+detect $\text{Vega} < \epsilon$ and return
+\texttt{Ok(sigma\_min)} with a warning flag, because the IV is
+genuinely unrecoverable---any vol gives the same price.
+
+\paragraph{5. Smile Fitting.}
+Fit $\sigma(K) = \beta_0 + \beta_1 \ln(K/S_0) + \beta_2
+(\ln(K/S_0))^2$ by OLS. On SPX option data, the residual is
+typically 0.1--0.5 vol points, $\beta_1$ is negative (the skew),
+and $\beta_2$ is positive (the convexity). The skew coefficient
+$\beta_1$ quantifies how much the market prices downside risk.
+
+\paragraph{6. Newton Convergence.}
+Instrument \func{implied\_vol} to print $|C(\sigma_n) -
+C_{\text{mkt}}|$ at each step. For ATM options, the error roughly
+squares each iteration (quadratic convergence) until it hits
+machine precision in 4--6 steps. For deep ITM/OTM, Newton slows to
+linear (the derivative is tiny), and the bisection fallback takes
+over, converging in $\sim 10$--$20$ iterations.
+
+\section*{Chapter 11: Portfolio Optimization}
+
+\paragraph{1. Correlated Assets.}
+For $\rho = 0.5$, the frontier bends left (diversification helps
+but less than independence). For $\rho = -0.5$, it bends further
+left. For $\rho = -1$, the frontier touches the $\sigma = 0$ axis:
+the zero-variance portfolio has weight $w_A = \sigma_B / (\sigma_A +
+\sigma_B)$, giving $\sigma_p = 0$ exactly. This is the only case
+where risk can be fully eliminated.
+
+\paragraph{2. Three-Asset Frontier.}
+With $\mu_C = 0.08$, $\sigma_C = 0.15$, the global minimum-variance
+portfolio mixes all three assets to minimise $\mathbf{w}^\top
+\boldsymbol{\Sigma} \mathbf{w}$. The tangency Sharpe is higher than
+the two-asset case because the third asset adds a diversification
+opportunity. The gain is largest when the new asset has low
+correlation with the existing two.
+
+\paragraph{3. Long-Only Constraint.}
+Projected gradient descent: take a gradient step, then project onto
+the probability simplex ($w_i \ge 0$, $\sum w_i = 1$) by sorting and
+thresholding. For a high target $\mu_\star = 0.15$, the unconstrained
+solution shorts the low-return asset; the constrained solution
+allocates 100\% to the high-return asset, with higher variance. The
+constraint widens the frontier.
+
+\paragraph{4. Black-Litterman.}
+Prior $\mu \propto \Sigma \mathbf{w}_{\text{mkt}}$ (reverse-optimised
+from market weights). Posterior $\mu_{\text{BL}} = [(\tau\Sigma)^{-1}
++ \Omega^{-1}]^{-1} [(\tau\Sigma)^{-1}\mu + \Omega^{-1}\mathbf{q}]$
+where $\mathbf{q}$ is the view and $\Omega$ the view confidence. The
+posterior tangency tilts toward the view; the prior tangency is the
+market portfolio. The shrinkage parameter $\tau$ controls how much
+the view moves the estimate.
+
+\paragraph{5. Rolling CAPM.}
+Rolling 60-day beta $= \Cov(r_i, r_m) / \Var(r_m)$ computed over a
+sliding window. Betas are time-varying: a defensive stock's beta
+drops in bear markets (investors flock to safety), a cyclical
+stock's beta rises. The plot visualises the regime change---a
+constant beta assumption is a first-order approximation.
+
+\paragraph{6. CVaR Optimisation.}
+CVaR$_{95\%} = \E[-r_p \mid -r_p > \text{VaR}_{95\%}]$. Minimising
+CVaR over the two-asset simplex by grid search gives a portfolio
+that is more concentrated in the lower-variance asset than the
+Markowitz minimum-variance portfolio. The two differ when the return
+distribution is asymmetric---CVaR penalises tail shape, variance
+penalises spread.
+
+\section*{Chapter 12: Factor Models}
+
+\paragraph{1. Four- and Five-Factor Models.}
+Add momentum (UMD) and quality (e.g., gross profitability). The
+$R^2$ typically rises by 2--8 percentage points over the 3-factor
+model, with momentum contributing more for individual stocks and
+quality more for portfolios. The incremental gain diminishes as more
+factors are added---diminishing returns to factor zoo.
+
+\paragraph{2. Jacobi Eigenvalue.}
+The Jacobi algorithm rotates pairs of rows/columns to zero out
+off-diagonal entries. For a $5 \times 5$ symmetric matrix, it
+converges in 5--15 sweeps, each $O(n^2)$ rotations. Compared to the
+power method, Jacobi computes all eigenvalues simultaneously (no
+deflation error) but is slower for large $n$. For $n = 5$ the two
+agree to machine precision.
+
+\paragraph{3. PCA on Real Equity Returns.}
+Run PCA on 10 stocks, 252 days. The first PC is typically a ``market
+factor'' (all-positive loadings, $\sim 30$--$50\%$ of variance). The
+second and third PCs capture sector tilts (e.g., growth vs value,
+financials vs tech). The economic interpretation is not
+automatic---it requires labelling the loadings by sector.
+
+\paragraph{4. Rolling 60-Day Beta.}
+$\beta_t = \Cov_{60}(r_i, r_m) / \Var_{60}(r_m)$, plotted over time.
+Betas of defensive stocks (utilities) are $< 1$ and stable; betas
+of cyclical stocks (tech, finance) are $> 1$ and volatile. The
+rolling chart shows when a stock's sensitivity to the market
+changes---useful for regime-aware risk management.
+
+\paragraph{5. Market-Neutral Long-Short.}
+Long the high-SMB quintile, short the low-SMB quintile, scaled so
+$\beta_{\text{Mkt}} = 0$. The portfolio's variance decomposes into
+systematic (SMB-driven) and idiosyncratic (stock-specific) parts.
+Diversification (many stocks per leg) eliminates the idiosyncratic
+part, leaving the systematic SMB exposure---a ``pure size factor''
+portfolio.
+
+\section*{Chapter 13: Market Microstructure}
+
+\paragraph{1. Order Book Builder.}
+\begin{lstlisting}[language=Rust]
+fn build_book(orders: Vec<(Side, i64, u64, u64)>) -> OrderBook {
+    let mut book = OrderBook::new(1);
+    for (side, price, qty, ts) in orders {
+        book.add_order(Order { id: ts, side, price, quantity: qty, timestamp: ts }).unwrap();
+    }
+    book
+}
+\end{lstlisting}
+Assert \func{best\_bid} and \func{best\_ask} return the expected
+prices and \func{total\_volume} sums the quantities.
+
+\paragraph{2. Liquidity Sweep.}
+Build 5 ask levels totalling 1000 shares. A market buy of 750
+sweeps the first $\sim 3$--$4$ levels. The VWAP of the fills is
+$\le$ the volume-weighted ask price of all swept levels (equality
+when the order exactly exhausts a level). The test confirms
+price-time priority: earlier orders fill first.
+
+\paragraph{3. OFI and Returns.}
+Generate snapshots where bid quantity rises with ``buy pressure''
+and ask quantity falls. OFI $= \Delta q^{\text{bid}} - \Delta
+q^{\text{ask}}$ is positive when buy pressure rises. Mid-price
+returns are also positive. The correlation $\rho(\text{OFI},
+r_{\text{mid}})$ is typically 0.3--0.6, confirming OFI is a
+signed predictor of short-term returns.
+
+\paragraph{4. Impact Scaling.}
+\func{sqrt\_impact}$(\sigma, Q, V) = \sigma \sqrt{Q/V}$. Plotting
+impact vs $Q$ on a log-log scale gives a line of slope $1/2$,
+confirming the square-root law. Doubling $Q$ multiplies impact by
+$\sqrt{2} \approx 1.41$, not by 2---the concavity is the empirical
+regularity that motivates the Almgren-Chriss model.
+
+\paragraph{5. Net Frontier.}
+Per-rebalance cost $= \func{execution\_cost}(Q = 0.5 V_{\text{daily}},
+V_{\text{daily}}, \sigma, \text{spread})$. At $50\%$ turnover, the
+cost is $\sim 5$--$15$ bps. Subtract from the expected return: the
+net efficient frontier shifts down by the cost times turnover. The
+tangency Sharpe drops by $\sim 0.05$--$0.15$, depending on the
+spread and impact. The lesson: gross frontier optimisation
+overstates net performance.
+
+\section*{Chapter 14: AFML Backtesting}
+
+\paragraph{1. Custom Barriers.}
+Set the upper barrier to $\phi_t = 2 \sigma_t$ and the lower to
+$\psi_t = 2 \sigma_t$ where $\sigma_t$ is the rolling 20-day
+volatility. On a noisy series, the barriers widen, fewer events
+hit the profit-taking label (more time-outs); on a calm series,
+the barriers narrow, more events hit the barriers. The label
+distribution shifts from $\sim 20\%$ up to $\sim 10\%$ up as
+volatility rises---volatility-scaled barriers adapt to the regime.
+
+\paragraph{2. Embargo Calibration.}
+Compute the ACF of FFD returns. The embargo $\rho$ is the first lag
+where $|\rho_k| < 1.96 / \sqrt{T}$ (the 5\% significance band). For
+daily FFD returns, $\rho$ is typically 1--5 days. Without embargo,
+the out-of-sample Sharpe is inflated by $\sim 5$--$15\%$ due to
+leakage; with embargo, the Sharpe drops to its honest value.
+
+\paragraph{3. Volatility-Scaled Kelly.}
+$f_t = f^* \cdot \bar{\sigma} / \sigma_t$ where $\bar{\sigma}$ is
+the long-run volatility. In high-vol periods, $f_t$ shrinks; in
+low-vol periods, it grows. The drawdown distribution tightens
+because the largest losses (which occur in high-vol periods) are
+scaled down. The trade-off: the strategy grows more slowly in calm
+periods, but survives turbulent ones.
+
+\paragraph{4. Meta-Labeling.}
+Primary: sign of SMA crossover. Label with triple barrier. Train a
+logistic regression on the labelled events to predict correctness
+(meta-model). The meta-filtered strategy takes the primary signal
+only when the meta-model predicts ``correct'' (probability $> 0.5$).
+The meta-filtered Sharpe is typically 20--50\% higher than the
+primary alone, with fewer trades---the meta-model filters out the
+primary's low-confidence signals.

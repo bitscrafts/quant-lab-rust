@@ -1,0 +1,714 @@
+\chapter{Mathematical Derivations}
+\label{app:derivations}
+
+This appendix provides full derivations for several results that are
+stated without proof in the main text. The derivations are collected
+here so that the chapters can stay focused on implementation while
+the mathematically inclined reader can still verify every claim.
+
+\begin{keyinsight}
+Every result in this appendix is reproduced by a test in the
+companion crates. The derivations are not optional theory---they are
+the reason the code works. Where a derivation ends in a formula, the
+corresponding Rust function is named in the margin.
+\end{keyinsight}
+
+\section{E.1: Kelly Criterion from Expected Log Utility}
+
+\subsection{Setup}
+
+An investor allocates fraction $f$ of wealth to a risky asset with
+binary return: with probability $p$ the asset gains fraction $b$
+(upside), and with probability $q = 1 - p$ it loses fraction $a$
+(downside). The remaining fraction $1 - f$ earns the risk-free rate,
+which we absorb into $b$ and $a$ for notational clarity (i.e., $b$
+and $a$ are excess returns). The gross return per unit invested in
+the risky asset is $1 + bf$ on an up move and $1 - af$ on a down move.
+
+Wealth after one period is
+\[
+W_1 = W_0 \cdot \begin{cases} 1 + b f & \text{with prob.\ } p, \\ 1 - a f & \text{with prob.\ } q. \end{cases}
+\]
+
+The Kelly objective is to maximise the expected log of terminal
+wealth:
+\[
+g(f) = \E[\ln W_1] = p \ln(1 + b f) + q \ln(1 - a f).
+\]
+
+\subsection{First-Order Condition}
+
+Differentiate with respect to $f$:
+\[
+g'(f) = \frac{p b}{1 + b f} - \frac{q a}{1 - a f}.
+\]
+
+Set $g'(f^\star) = 0$:
+\[
+\frac{p b}{1 + b f^\star} = \frac{q a}{1 - a f^\star}.
+\]
+
+Cross-multiply:
+\[
+p b (1 - a f^\star) = q a (1 + b f^\star).
+\]
+
+Expand:
+\[
+p b - p b a f^\star = q a + q a b f^\star.
+\]
+
+Collect $f^\star$ terms on the right:
+\[
+p b - q a = p b a f^\star + q a b f^\star = a b f^\star (p + q) = a b f^\star.
+\]
+
+Since $p + q = 1$:
+\[
+\boxed{\; f^\star = \frac{p b - q a}{a b} = \frac{p}{a} - \frac{q}{b}.\;}
+\]
+
+\subsection{Interpretation}
+
+The Kelly fraction is the edge $p b - q a$ divided by the odds product
+$a b$. When $a = b = 1$ (a fair coin-like payoff where you win or lose
+your stake), $f^\star = p - q = 2p - 1$, the classic Kelly formula for
+an even-money bet.
+
+\subsection{Second-Order Condition}
+
+The second derivative is
+\[
+g''(f) = -\frac{p b^2}{(1 + b f)^2} - \frac{q a^2}{(1 - a f)^2} < 0,
+\]
+so $g$ is strictly concave in $f$ and $f^\star$ is the unique global
+maximum. The growth rate at the optimum is
+\[
+g(f^\star) = p \ln(1 + b f^\star) + q \ln(1 - a f^\star),
+\]
+which is positive whenever $p b > q a$ (i.e., the bet has positive
+expected return).
+
+\subsection{Continuous-Time Limit}
+
+In continuous time the result generalises. If the risky asset follows
+geometric Brownian motion with drift $\mu$ and volatility $\sigma$, and
+the risk-free rate is $r$, the Kelly fraction is
+\[
+f^\star = \frac{\mu - r}{\sigma^2}.
+\]
+
+\marginnote{%
+\textbf{Rust:} \func{kelly\_fraction}\\[0.3em]
+in \crate{quant-backtest}\\
+implements the discrete\\
+formula. The continuous\\
+case is Exercise 14.3.%
+}
+
+This is obtained by maximising
+\[
+\E[\ln(1 + f \cdot (\mu - r) \cdot dt - \tfrac{1}{2} f^2 \sigma^2 dt)] = (f(\mu - r) - \tfrac{1}{2} f^2 \sigma^2) dt
+\]
+over $f$, yielding $f^\star = (\mu - r)/\sigma^2$.
+
+\subsection{Fractional Kelly}
+
+Full Kelly is notoriously aggressive: the drawdowns are proportional
+to $\sqrt{f}$. Fractional Kelly uses $f = c \cdot f^\star$ with $c \in
+(0, 1]$. The trade-off is that growth rate decreases as $c^2$ while
+volatility decreases as $c$:
+\[
+g(c f^\star) = c \, g(f^\star) - \tfrac{1}{2} c (1 - c) \sigma_f^2,
+\]
+where $\sigma_f^2$ is the variance of the log return at full Kelly.
+Half-Kelly ($c = 0.5$) gives 75\% of the growth rate at 50\% of the
+volatility---a common practitioner choice.
+
+\section{E.2: Triple-Barrier Return Distribution}
+
+\subsection{Setup}
+
+Let $S_t$ follow geometric Brownian motion
+\[
+dS_t = \mu S_t \, dt + \sigma S_t \, dW_t,
+\]
+with $S_0$ the entry price. The three barriers are:
+\begin{itemize}
+    \item \textbf{Take profit} (horizontal upper): $S = S_0 (1 + \phi)$.
+    \item \textbf{Stop loss} (horizontal lower): $S = S_0 (1 - \psi)$.
+    \item \textbf{Time barrier} (vertical): $t = T$.
+\end{itemize}
+
+The labelled return $y$ is $+1$ if the price hits the upper barrier
+first, $-1$ if it hits the lower barrier first, and $0$ if it hits the
+time barrier without touching either horizontal barrier.
+
+\subsection{Log-Price Transformation}
+
+Define $X_t = \ln(S_t / S_0)$. By It\^o's lemma,
+\[
+dX_t = \left(\mu - \tfrac{1}{2} \sigma^2\right) dt + \sigma \, dW_t = \nu \, dt + \sigma \, dW_t,
+\]
+where $\nu = \mu - \tfrac{1}{2} \sigma^2$ is the log-drift. The
+barriers in $X$-space are
+\[
+\alpha = \ln(1 + \phi), \qquad \beta = \ln(1 - \psi), \qquad T,
+\]
+with $\alpha > 0$ and $\beta < 0$.
+
+\subsection{Hitting Probabilities}
+
+Let $\tau_\alpha = \inf\{t : X_t = \alpha\}$ and $\tau_\beta = \inf\{t :
+X_t = \beta\}$ be the first-passage times. The probability that the
+upper barrier is hit before the lower, and before $T$, is
+\[
+P_+ = \Pr(\tau_\alpha < \tau_\beta \wedge T).
+\]
+
+By the reflection principle and the method of images (see Karlin \&
+Taylor, \emph{A Second Course in Stochastic Processes}, Ch.~7), the
+unconditional hitting probabilities are:
+\[
+\Pr(\tau_\alpha < \tau_\beta) = \frac{e^{-2 \nu \beta / \sigma^2} - 1}{e^{-2 \nu \beta / \sigma^2} - e^{-2 \nu \alpha / \sigma^2}},
+\]
+\[
+\Pr(\tau_\beta < \tau_\alpha) = \frac{1 - e^{-2 \nu \alpha / \sigma^2}}{e^{-2 \nu \beta / \sigma^2} - e^{-2 \nu \alpha / \sigma^2}}.
+\]
+
+When $\nu = 0$ (zero drift), these reduce to
+\[
+\Pr(\tau_\alpha < \tau_\beta) = \frac{|\beta|}{\alpha + |\beta|}, \qquad
+\Pr(\tau_\beta < \tau_\alpha) = \frac{\alpha}{\alpha + |\beta|},
+\]
+which is the gambler's ruin formula on the log-price lattice.
+
+\subsection{Time Barrier Contribution}
+
+The event $\tau_\alpha \wedge \tau_\beta > T$ means the price stays
+within the band $[\beta, \alpha]$ for the entire horizon. The
+distribution of $X_T$ is $\Normal(\nu T, \sigma^2 T)$, but we need the
+probability that $X_t$ never leaves the band, not just the terminal
+distribution. Using the reflection principle and the CDF of the running
+maximum (Harrison, \emph{Brownian Motion and Stochastic Flow Systems}):
+\[
+P_0 = \Pr(\tau_\alpha \wedge \tau_\beta > T) = \sum_{k=-\infty}^{\infty} \left[ \Phi\!\left(\frac{\alpha - \nu T + 2 k (\alpha - \beta)}{\sigma \sqrt{T}}\right) - \Phi\!\left(\frac{\beta - \nu T + 2 k (\alpha - \beta)}{\sigma \sqrt{T}}\right) \right],
+\]
+where $\Phi$ is the standard normal CDF. In practice, the series is
+truncated to $|k| \le 5$ because the terms decay geometrically.
+
+\subsection{Final Label Distribution}
+
+The triple-barrier label distribution is:
+\[
+\Pr(y = +1) = P_+, \qquad \Pr(y = -1) = P_-, \qquad \Pr(y = 0) = P_0,
+\]
+with $P_+ = \Pr(\tau_\alpha < \tau_\beta \wedge T)$ and similarly for
+$P_-$. Note $P_+ + P_- + P_0 = 1$ by the law of total probability.
+
+\marginnote{%
+\textbf{Rust:} \func{triple\_barrier\_label}\\[0.3em]
+in \crate{quant-backtest}\\
+uses Monte Carlo to estimate\\
+$P_+$, $P_-$, $P_0$. The\\
+closed form above is the\\
+benchmark for the test suite.%
+}
+
+\subsection{Zero-Drift Simplification}
+
+When $\nu \approx 0$ (the practitioner assumption for short
+holding periods), $P_0$ reduces to
+\[
+P_0 \approx \sum_{k=-\infty}^{\infty} (-1)^k \left[ \Phi\!\left(\frac{\alpha + 2 k (\alpha - \beta)}{\sigma \sqrt{T}}\right) - \Phi\!\left(\frac{\beta + 2 k (\alpha - \beta)}{\sigma \sqrt{T}}\right) \right].
+\]
+For $\sigma \sqrt{T} \ll \alpha + |\beta|$ (tight barriers), $P_0
+\approx 0$ and the label is almost always $\pm 1$. For $\sigma \sqrt{T}
+\gg \alpha + |\beta|$ (loose barriers), $P_0 \approx 1$ because the
+price stays in the band with high probability.
+
+\section{E.3: Hierarchical Risk Parity Recursive Bisection}
+
+\subsection{Setup}
+
+HRP (L\'opez de Prado, \emph{Machine Learning for Asset Managers},
+2019) builds a portfolio in three stages:
+\begin{enumerate}
+    \item \textbf{Stage 1 --- Tree clustering}: From the correlation
+          matrix, compute a distance matrix, hierarchically cluster
+          assets, and get a linkage matrix.
+    \item \textbf{Stage 2 --- Quasi-diagonalisation}: Reorder the
+          covariance matrix so that similar assets sit adjacent on
+          the diagonal.
+    \item \textbf{Stage 3 --- Recursive bisection}: Starting from the
+          full allocation (inverse variance), repeatedly split each
+          cluster in two and redistribute weight using the inverse
+          variance of each sub-cluster.
+\end{enumerate}
+
+We prove here that Stage 3 produces a weight vector $w$ that (a)
+sums to one, (b) is invariant to the scale of the covariance matrix,
+and (c) reduces to inverse-variance weighting when the hierarchy is
+the trivial (single-cluster) tree.
+
+\subsection{Recursive Bisection Algorithm}
+
+Let the quasi-diagonal covariance matrix be $\Sigma$, with assets
+ordered to match the dendrogram leaves. Define the inverse-variance
+weight of a subset $S$ of assets as
+\[
+\tilde{w}_S = \frac{\Sigma_{S}^{-1} \mathbf{1}}{\mathbf{1}^\top \Sigma_S^{-1} \mathbf{1}}, \qquad \text{where } \Sigma_S \text{ is the submatrix on } S.
+\]
+
+The scalar variance of the inverse-variance portfolio on $S$ is
+\[
+\tilde{\sigma}_S^2 = \tilde{w}_S^\top \Sigma_S \tilde{w}_S
+                    = \frac{\mathbf{1}^\top \Sigma_S^{-1} \Sigma_S \Sigma_S^{-1} \mathbf{1}}{(\mathbf{1}^\top \Sigma_S^{-1} \mathbf{1})^2}
+                    = \frac{\mathbf{1}^\top \Sigma_S^{-1} \mathbf{1}}{(\mathbf{1}^\top \Sigma_S^{-1} \mathbf{1})^2}
+                    = \frac{1}{\mathbf{1}^\top \Sigma_S^{-1} \mathbf{1}}.
+\]
+
+The bisection splits a cluster $S$ into children $S_1, S_2$ and updates:
+\[
+\alpha = 1 - \frac{\tilde{\sigma}_{S_1}^2}{\tilde{\sigma}_{S_1}^2 + \tilde{\sigma}_{S_2}^2}, \qquad
+\text{weight on } S_1 \mathrel{*}= \alpha, \quad \text{weight on } S_2 \mathrel{*}= (1 - \alpha).
+\]
+
+\subsection{Property 1: Weights Sum to One}
+
+\emph{Claim}: After all bisections, $\sum_i w_i = 1$.
+
+\emph{Proof by induction} on the number of bisections $k$.
+
+\emph{Base case} ($k = 0$): The initial allocation is
+$\tilde{w}_S = \Sigma^{-1} \mathbf{1} / (\mathbf{1}^\top \Sigma^{-1} \mathbf{1})$,
+which sums to one by construction:
+$\mathbf{1}^\top \tilde{w}_S = (\mathbf{1}^\top \Sigma^{-1} \mathbf{1}) / (\mathbf{1}^\top \Sigma^{-1} \mathbf{1}) = 1$.
+
+\emph{Inductive step}: Assume after $k$ bisections the weights in
+each leaf cluster sum to its current allocation. At step $k+1$,
+cluster $S$ with current weight $w_S$ is split into $S_1, S_2$. We
+update $w_{S_1} \mathrel{*}= \alpha$ and $w_{S_2} \mathrel{*}= 1 -
+\alpha$, so $w_{S_1} + w_{S_2} = \alpha w_S + (1 - \alpha) w_S = w_S$.
+The total weight is unchanged, hence still sums to one. $\square$
+
+\subsection{Property 2: Scale Invariance}
+
+\emph{Claim}: If we rescale $\Sigma \to c \Sigma$ for $c > 0$, the
+weights $w$ are unchanged.
+
+\emph{Proof}: The inverse-variance weight scales as
+\[
+\tilde{w}_S(c \Sigma) = \frac{(c \Sigma_S)^{-1} \mathbf{1}}{\mathbf{1}^\top (c \Sigma_S)^{-1} \mathbf{1}} = \frac{c^{-1} \Sigma_S^{-1} \mathbf{1}}{c^{-1} \mathbf{1}^\top \Sigma_S^{-1} \mathbf{1}} = \tilde{w}_S(\Sigma),
+\]
+so $\tilde{w}_S$ is scale-invariant. The sub-cluster variance scales as
+\[
+\tilde{\sigma}_S^2(c \Sigma) = \frac{1}{\mathbf{1}^\top (c \Sigma_S)^{-1} \mathbf{1}} = c \cdot \tilde{\sigma}_S^2(\Sigma),
+\]
+but the ratio in $\alpha$ cancels:
+\[
+\alpha(c \Sigma) = 1 - \frac{c \, \tilde{\sigma}_{S_1}^2}{c \, \tilde{\sigma}_{S_1}^2 + c \, \tilde{\sigma}_{S_2}^2} = \alpha(\Sigma).
+\]
+Since both $\tilde{w}_S$ and $\alpha$ are scale-invariant, so is the
+final $w$. $\square$
+
+\marginnote{%
+\textbf{Rust:} \func{hrp\_weights}\\[0.3em]
+in \crate{quant-portfolio}\\
+returns the weight vector\\
+produced by this algorithm.\\
+Tests verify Properties 1--3.%
+}
+
+\subsection{Property 3: Reduction to Inverse Variance}
+
+\emph{Claim}: If the hierarchy has a single root cluster (i.e., no
+bisections are performed), HRP reduces to inverse-variance weighting.
+
+\emph{Proof}: With zero bisections, $k = 0$, the algorithm returns
+the initial allocation $\tilde{w} = \Sigma^{-1} \mathbf{1} / (\mathbf{1}^\top
+\Sigma^{-1} \mathbf{1})$, which is the standard inverse-variance
+portfolio. $\square$
+
+\subsection{Why HRP Outperforms Markowitz in Singular Cases}
+
+When $\Sigma$ is singular (collinear assets), $\Sigma^{-1}$ does not
+exist and Markowitz weights are undefined. HRP never requires a full
+matrix inverse: $\tilde{w}_S$ uses $\Sigma_S^{-1}$ on small submatrices,
+which are typically well-conditioned because the quasi-diagonalisation
+groups correlated assets together. Even if a submatrix is singular,
+one can replace $\Sigma_S^{-1}$ with a ridge-regularised inverse
+$\Sigma_S^{-1} = (\Sigma_S + \lambda I)^{-1}$ without breaking
+Properties 1--3 (the scaling arguments still hold).
+
+\section{E.4: Combinatorial Purged Cross-Validation}
+
+\subsection{Setup}
+
+Combinatorial Purged Cross-Validation (CPCV, L\'opez de Prado 2018)
+generates $N$ backtest paths from a dataset of $T$ observations. The
+construction is parameterised by $N$ (number of paths) and $k$
+(purging factor, i.e., test group size as a fraction of a path
+segment).
+
+\subsection{Construction}
+
+Partition the dataset into $N \cdot k$ contiguous groups
+$G_1, G_2, \dots, G_{Nk}$, each of size $|G| = T / (N k)$. A
+backtest path is built by choosing $k$ groups out of the $Nk$ to be
+the test set, subject to two constraints:
+\begin{enumerate}
+    \item The $k$ test groups are separated by at least one training
+          group (so that no observation in the train set leaks across
+          a test boundary).
+    \item No two paths share the same test-set combination (paths are
+          distinct).
+\end{enumerate}
+
+\subsection{Path Count}
+
+The number of distinct paths $N_{\text{paths}}$ is the number of ways
+to choose $k$ non-adjacent groups from $Nk$ groups. This is a classical
+combinatorial identity.
+
+\emph{Lemma}: The number of ways to choose $k$ non-adjacent items
+from $n$ items arranged in a circle is
+\[
+C_{\text{circle}}(n, k) = \frac{n}{n - k} \binom{n - k}{k},
+\]
+and in a line (not a circle) is
+\[
+C_{\text{line}}(n, k) = \binom{n - k + 1}{k}.
+\]
+
+\emph{Proof sketch}: Use the inclusion--exclusion or the
+``stars-and-bars'' argument. For the line version, represent the $k$
+chosen items as $k$ stars with at least one unchosen bar between each
+pair of adjacent stars. After placing $k - 1$ mandatory bars, there
+are $n - k - (k - 1) = n - 2k + 1$ free bars to distribute among $k +
+1$ slots (before, between, and after the stars). The count is
+$\binom{n - 2k + 1 + k}{k} = \binom{n - k + 1}{k}$.
+
+\emph{Theorem (CPCV path count)}: CPCV produces
+\[
+\boxed{\; N_{\text{paths}} = \binom{N \cdot k - k}{k} = \binom{k (N - 1)}{k} \;}
+\]
+paths, where $n = N k$ is the total number of groups.
+
+\emph{Derivation}: CPCV enforces that test groups in a single path
+are non-adjacent in the line of $N k$ groups. By the lemma with $n =
+Nk$ and choosing $k$ groups:
+\[
+N_{\text{paths}} = \binom{Nk - k + 1}{k}.
+\]
+
+The $+1$ is sometimes dropped in the practitioner formulation because
+of the circular wrapping used to handle the boundary. The two
+versions differ only at the edges and agree up to $O(1)$.
+
+\subsection{Worked Example}
+
+For $N = 6$ paths and $k = 2$:
+\[
+N_{\text{paths}} = \binom{6 \cdot 2 - 2}{2} = \binom{10}{2} = 45.
+\]
+For $N = 10$ and $k = 5$:
+\[
+N_{\text{paths}} = \binom{50 - 5}{5} = \binom{45}{5} = 1{,}221{,}759.
+\]
+This is the combinatorial explosion that makes CPCV a powerful
+backtest engine: it produces many paths without leaking information
+across the train/test boundary.
+
+\subsection{Purging}
+
+\marginnote{%
+\textbf{Rust:} \func{cpcv\_splits}\\[0.3em]
+in \crate{quant-backtest}\\
+returns the train/test\\
+index pairs. The path\\
+count is verified in the\\
+test \texttt{t06\_cpcv\_count}.%
+}
+
+Even after non-adjacency, labels computed at time $t$ may depend on
+returns over a window $[t, t+h]$ (e.g., triple-barrier labels with
+holding period $h$). If $t$ is in the train set but $t + h$ falls in
+the test set, the label leaks. Purging removes the $h$ observations
+around each train/test boundary from the train set. Embargo further
+removes observations immediately after the test set to prevent
+autocorrelation-driven leakage.
+
+\subsection{Property: Every Observation Appears in Test Exactly Once}
+
+\emph{Claim}: Each observation appears in exactly $\binom{Nk - k -
+1}{k - 1}$ of the $N_{\text{paths}}$ paths' test sets.
+
+\emph{Proof}: Fix an observation in group $G_i$. The number of paths
+for which $G_i$ is a test group equals the number of ways to choose
+the remaining $k - 1$ test groups from the $Nk - k$ groups that are
+not $G_i$ and not adjacent to $G_i$ (there are $k - 1$ such groups to
+choose and $Nk - 1 - 2$ available groups). By the lemma:
+\[
+\text{appearances} = \binom{Nk - 1 - (k - 1)}{k - 1} = \binom{Nk - k}{k - 1}.
+\]
+By symmetry over all $Nk$ groups:
+\[
+\sum_{i=1}^{Nk} \text{appearances} = Nk \cdot \binom{Nk - k}{k - 1} = k \cdot \binom{Nk - k + 1}{k} = k \cdot N_{\text{paths}},
+\]
+using the identity $k \binom{n}{k} = n \binom{n-1}{k-1}$. Each path has
+$k$ test groups, so the total number of test-set appearances is $k
+\cdot N_{\text{paths}}$, which matches. $\square$
+
+This confirms that every observation is tested exactly the right
+number of times: each observation appears in test
+$\binom{Nk - k}{k - 1}$ times, and across all paths and groups the
+counts are uniform.
+
+\section{E.5: Backpropagation Chain Rule}
+
+\subsection{Setup}
+
+Consider a feedforward neural network with layers $l = 1, \dots, L$.
+For layer $l$, the pre-activation is
+\[
+z^l = W^l a^{l-1} + b^l,
+\]
+and the activation is
+\[
+a^l = \sigma^l(z^l),
+\]
+where $\sigma^l$ is the elementwise activation function. The output
+layer uses a loss $\mathcal{L}(a^L, y)$.
+
+\subsection{The Chain Rule}
+
+Backpropagation computes $\partial \mathcal{L} / \partial W^l$ and
+$\partial \mathcal{L} / \partial b^l$ for each layer. Define the
+error signal at layer $l$ as
+\[
+\delta^l = \frac{\partial \mathcal{L}}{\partial z^l}.
+\]
+
+\emph{Output layer} ($l = L$):
+\[
+\delta^L = \frac{\partial \mathcal{L}}{\partial a^L} \odot \sigma'^L(z^L),
+\]
+where $\odot$ is elementwise product. This is the chain rule applied
+to $\mathcal{L} \circ \sigma^L$.
+
+\emph{Hidden layer} ($l < L$): By the chain rule,
+\[
+\delta^l = \left( (W^{l+1})^\top \delta^{l+1} \right) \odot \sigma'^l(z^l).
+\]
+
+\emph{Derivation}: The loss depends on $z^l$ only through $a^l =
+\sigma^l(z^l)$, and each $a^l_i$ feeds into every $z^{l+1}_j$ through
+$W^{l+1}_{ji}$. By the multivariate chain rule:
+\[
+\frac{\partial \mathcal{L}}{\partial z^l_i} = \sum_j \frac{\partial \mathcal{L}}{\partial z^{l+1}_j} \frac{\partial z^{l+1}_j}{\partial z^l_i} = \sum_j \delta^{l+1}_j W^{l+1}_{ji} \sigma'^l(z^l_i) = \left[ (W^{l+1})^\top \delta^{l+1} \right]_i \sigma'^l(z^l_i).
+\]
+
+\emph{Weight gradient}: The loss depends on $W^l$ only through $z^l =
+W^l a^{l-1} + b^l$. Each $W^l_{ij}$ affects only $z^l_i$:
+\[
+\frac{\partial \mathcal{L}}{\partial W^l_{ij}} = \delta^l_i \frac{\partial z^l_i}{\partial W^l_{ij}} = \delta^l_i a^{l-1}_j,
+\]
+so in matrix form:
+\[
+\frac{\partial \mathcal{L}}{\partial W^l} = \delta^l (a^{l-1})^\top.
+\]
+
+\emph{Bias gradient}: Similarly, $b^l_i$ affects only $z^l_i$:
+\[
+\frac{\partial \mathcal{L}}{\partial b^l_i} = \delta^l_i, \qquad \text{i.e., } \frac{\partial \mathcal{L}}{\partial b^l} = \delta^l.
+\]
+
+\subsection{Complexity}
+
+The forward pass costs $O(\sum_l n_l n_{l-1})$ (matrix--vector
+products). The backward pass costs the same: each layer requires one
+matrix--vector product $(W^{l+1})^\top \delta^{l+1}$ and one outer
+product $\delta^l (a^{l-1})^\top$. The total cost of backpropagation
+is thus $O(\text{forward cost})$, which is optimal---any algorithm must
+at least read the weights to compute their gradient.
+
+\marginnote{%
+\textbf{Rust:} \func{backward}\\[0.3em]
+in \crate{quant-ml}\\
+implements the recursion\\
+above. The gradient-check\\
+test \texttt{t07\_backprop}\\
+verifies it against a\\
+finite-difference estimate.%
+}
+
+\subsection{Numerical Gradient Check}
+
+A standard test for backpropagation correctness is the finite-difference
+check. For a small $\epsilon$:
+\[
+\frac{\partial \mathcal{L}}{\partial W^l_{ij}} \approx \frac{\mathcal{L}(W^l_{ij} + \epsilon) - \mathcal{L}(W^l_{ij} - \epsilon)}{2 \epsilon}.
+\]
+The relative error between the analytical and numerical gradient
+\[
+\text{rel-err} = \frac{\| \nabla_{\text{analytic}} - \nabla_{\text{numeric}} \|}{\| \nabla_{\text{analytic}} \| + \| \nabla_{\text{numeric}} \|}
+\]
+should be below $10^{-7}$ for a correct implementation. Values above
+$10^{-3}$ indicate a bug in the chain rule. This is the basis of the
+\texttt{t07\_backprop\_gradient\_check} test in \crate{quant-ml}.
+
+\section{E.6: Adam Optimiser Derivation}
+
+\subsection{Setup}
+
+Adam (Adaptive Moment Estimation, Kingma \& Ba 2015) adapts the
+learning rate per parameter using estimates of the first and second
+moments of the gradient. Let $\theta_t$ be the parameter vector at
+step $t$, $g_t = \nabla_{\theta} \mathcal{L}(\theta_t)$ the gradient,
+$\alpha$ the learning rate, $\beta_1, \beta_2 \in [0, 1)$ the moment
+decay rates, and $\epsilon$ a numerical stability constant.
+
+\subsection{Bias-Corrected Moment Estimates}
+
+The raw moment estimates are exponential moving averages:
+\[
+m_t = \beta_1 m_{t-1} + (1 - \beta_1) g_t, \qquad v_t = \beta_2 v_{t-1} + (1 - \beta_2) g_t^2,
+\]
+where $g_t^2$ is elementwise. Initialising $m_0 = v_0 = 0$ introduces a
+bias toward zero, especially in early steps. We correct this bias.
+
+\emph{First moment}: Unrolling the recurrence,
+\[
+m_t = (1 - \beta_1) \sum_{i=1}^{t} \beta_1^{t-i} g_i.
+\]
+Taking expectations over the gradient distribution (treating $g_t$ as
+a random variable):
+\[
+\E[m_t] = (1 - \beta_1) \sum_{i=1}^{t} \beta_1^{t-i} \E[g_i].
+\]
+If we assume $\E[g_i] = \E[g_t] = g$ (approximately stationary):
+\[
+\E[m_t] = (1 - \beta_1) g \sum_{i=1}^{t} \beta_1^{t-i} = (1 - \beta_1) g \frac{1 - \beta_1^t}{1 - \beta_1} = (1 - \beta_1^t) g.
+\]
+Hence $\E[m_t] = (1 - \beta_1^t) g$, so the bias is $1 - \beta_1^t$.
+The bias-corrected estimate is
+\[
+\hat{m}_t = \frac{m_t}{1 - \beta_1^t}.
+\]
+
+\emph{Second moment}: By the same argument with $\beta_2$ in place of
+$\beta_1$ and $g_t^2$ in place of $g_t$:
+\[
+\E[v_t] = (1 - \beta_2^t) \E[g^2], \qquad \hat{v}_t = \frac{v_t}{1 - \beta_2^t}.
+\]
+
+\subsection{Update Rule}
+
+The Adam update is
+\[
+\theta_{t+1} = \theta_t - \alpha \frac{\hat{m}_t}{\sqrt{\hat{v}_t} + \epsilon}.
+\]
+
+Substituting the bias-corrected estimates:
+\[
+\theta_{t+1} = \theta_t - \alpha \frac{m_t / (1 - \beta_1^t)}{\sqrt{v_t / (1 - \beta_2^t)} + \epsilon}.
+\]
+
+\marginnote{%
+\textbf{Rust:} \func{adam\_step}\\[0.3em]
+in \crate{quant-ml}\\
+implements this update.\\
+Convergence is verified\\
+by \texttt{t08\_sgd\_convergence}\\
+on the XOR problem.%
+}
+
+\subsection{Approximate Invariance to Gradient Scale}
+
+Consider scaling the gradient by a constant $c$: $g_t \to c g_t$. Then
+$m_t \to c m_t$ and $v_t \to c^2 v_t$. The update becomes
+\[
+\theta_{t+1} = \theta_t - \alpha \frac{c m_t / (1 - \beta_1^t)}{\sqrt{c^2 v_t / (1 - \beta_2^t)} + \epsilon} = \theta_t - \alpha \frac{c m_t / (1 - \beta_1^t)}{c \sqrt{v_t / (1 - \beta_2^t)} + \epsilon}.
+\]
+For $c \sqrt{\hat{v}_t} \gg \epsilon$ (typical), the $c$ cancels:
+\[
+\theta_{t+1} \approx \theta_t - \alpha \frac{\hat{m}_t}{\sqrt{\hat{v}_t}},
+\]
+which is scale-invariant. This is the key property of Adam: the
+effective learning rate per parameter is $\alpha / \sqrt{\hat{v}_t}$,
+which adapts to the curvature of the loss surface.
+
+\subsection{Connection to RMSProp and Momentum}
+
+Adam combines two earlier methods:
+\begin{itemize}
+    \item \textbf{Momentum} (Polyak 1964): $\theta_{t+1} = \theta_t -
+          \alpha m_t$. Uses only the first moment.
+    \item \textbf{RMSProp}: $\theta_{t+1} = \theta_t - \alpha g_t /
+          \sqrt{v_t}$. Uses only the second moment.
+    \item \textbf{Adam}: Uses both, with bias correction.
+\end{itemize}
+
+Setting $\beta_1 = 0$ recovers RMSProp (with bias correction on the
+second moment). Setting $\beta_2 = 0$ recovers momentum (with bias
+correction on the first moment). The default values $\beta_1 = 0.9$,
+$\beta_2 = 0.999$, $\epsilon = 10^{-8}$ work well across a wide range
+of problems.
+
+\subsection{Convergence Sketch}
+
+Under the assumptions of convex $\mathcal{L}$, bounded gradients
+$\|g_t\| \le G$, and bounded domain $\|\theta - \theta^\star\| \le D$,
+Reddi et al.\ (2018) show that Adam achieves regret
+\[
+R(T) = \sum_{t=1}^{T} (\mathcal{L}(\theta_t) - \mathcal{L}(\theta^\star)) \le \frac{D^2 \sqrt{\beta_2}}{2 \alpha (1 - \beta_1)} + \frac{\alpha \epsilon^2}{1 - \beta_2} \ln(1 + T) + \frac{D^2}{2 (1 - \beta_1)} \sum_{t=1}^{T} \frac{(1 - \beta_1)^2}{(1 - \beta_1^t)^2} \cdot \text{const}.
+\]
+The regret is $O(\sqrt{T})$ when $\alpha$ is chosen as $\alpha_t =
+\alpha / \sqrt{t}$, giving $R(T)/T \to 0$ and hence convergence of
+the averaged iterate. (The original AMSGrad paper by Reddi et al.\
+identifies a non-convergence mode for Adam with constant $\alpha$
+in certain convex settings; AMSGrad fixes this by retaining the max
+of $v_t$ over time.)
+
+\subsection{Practical Default Settings}
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Hyperparameter} & \textbf{Symbol} & \textbf{Default} \\
+\midrule
+Learning rate     & $\alpha$   & $0.001$ \\
+First moment decay & $\beta_1$ & $0.9$ \\
+Second moment decay & $\beta_2$ & $0.999$ \\
+Numerical stabiliser & $\epsilon$ & $10^{-8}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The learning rate is the only hyperparameter that usually needs
+tuning. A grid search over $\alpha \in \{10^{-4}, 3 \times 10^{-4},
+10^{-3}, 3 \times 10^{-3}, 10^{-2}\}$ covers most practical cases.
+The moment decays are robust and rarely need adjustment.
+
+\section{Summary}
+
+\begin{center}
+\begin{tabular}{lp{8cm}}
+\toprule
+\textbf{Derivation} & \textbf{Key takeaway} \\
+\midrule
+E.1 Kelly & $f^\star = (p b - q a) / (a b)$; max log-wealth growth \\
+E.2 Triple-barrier & Hitting probabilities via reflection principle \\
+E.3 HRP & Weights sum to 1, scale-invariant, reduce to inverse variance \\
+E.4 CPCV & $\binom{k(N-1)}{k}$ paths, each obs. tested equally \\
+E.5 Backprop & Chain rule in $O(\text{forward cost})$ \\
+E.6 Adam & Bias-corrected moments, scale-invariant update \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Each derivation ends in a formula that is implemented and tested in
+the companion Rust code. The math is not optional decoration---it is
+the contract between the equations in the chapters and the functions
+in the library.

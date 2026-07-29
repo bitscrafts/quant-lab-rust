@@ -16,6 +16,7 @@ members = [
     "crates/quant-factors",
     "crates/quant-microstructure",
     "crates/quant-backtest",
+    "crates/quant-lib",
 ]
 
 [workspace.package]

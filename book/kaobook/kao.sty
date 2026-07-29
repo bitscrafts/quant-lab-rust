@@ -22,6 +22,7 @@
 \RequirePackage{options} % Manage class options
 \RequirePackage{xparse} % Parse arguments for macros
 \RequirePackage{xpatch} % Patch LaTeX code in external packages
+\RequirePackage{letltxmacro} % Robust copy of robust macros (avoids \let recursion)
 \RequirePackage{xstring} % Parse strings
 \RequirePackage{afterpage} % Run commands after specific pages
 \RequirePackage{imakeidx} % For the index; must be loaded before the 'caption' and 'hyperref' packages
@@ -649,52 +650,28 @@
 
 % Detect whether there is a caption in the current environment by switching the kaocaption toggle when \caption is called. If there is no caption, reset the floatsetup. Without this fix, the floatrow package will align the environment to the main text if there is a caption, but to the margin if there is no caption.
 \newtoggle{kaocaption}
-\AtBeginEnvironment{figure}{%
-	\let\oldcaption\caption%
-	\RenewDocumentCommand{\caption}{s o m}{%
-		\IfBooleanTF{#1}{%
-			\oldcaption*{#3}%
-		}{%
-			\IfValueTF{#2}{%
-				\oldcaption[#2]{#3}%
-			}{%
-				\oldcaption{#3}%
-			}%
-		}%
-		\toggletrue{kaocaption}%
-	}%
-}
+\newif\ifkao@infloat
+\AtBeginEnvironment{figure}{\kao@infloattrue}
 \AtEndEnvironment{figure}{%
 	\iftoggle{kaocaption}{%
 	}{%
 		\RawFloats%
 		\centering%
 	}%
-	\togglefalse{kaocaption}%
+	\togglefalse{kaocaption}\kao@infloatfalse
 }
-\AtBeginEnvironment{table}{%
-	\let\oldcaption\caption%
-	\RenewDocumentCommand{\caption}{s o m}{%
-		\IfBooleanTF{#1}{%
-			\oldcaption*{#3}%
-		}{%
-			\IfValueTF{#2}{%
-				\oldcaption[#2]{#3}%
-			}{%
-				\oldcaption{#3}%
-			}%
-		}%
-		\toggletrue{kaocaption}%
-	}%
-}
+\AtBeginEnvironment{table}{\kao@infloattrue}
 \AtEndEnvironment{table}{%
 	\iftoggle{kaocaption}{%
 	}{%
 		\RawFloats%
 		\centering%
 	}%
-	\togglefalse{kaocaption}%
+	\togglefalse{kaocaption}\kao@infloatfalse
 }
+% Patch \caption once (without redefinition, avoiding recursion) to flip
+% the kaocaption toggle when called inside a figure or table float.
+\xpretocmd{\caption}{\ifkao@infloat\toggletrue{kaocaption}\fi}{}{}
 
 % Change the formatting of the captions
 \addtokomafont{captionlabel}{\bfseries} % Bold font for the figure label

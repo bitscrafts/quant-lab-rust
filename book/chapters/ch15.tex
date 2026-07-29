@@ -1,0 +1,464 @@
+% Chapter 15: quant-lib — The Unified Facade
+% Companion code: crates/quant-lib
+
+\chapter{quant-lib: The Unified Facade}
+\label{ch:quant-lib}
+
+\begin{companioncode}{quant-lib}
+Code: \texttt{crates/quant-lib/}\\
+Dependencies: all source crates (re-exported)\\
+Run: \texttt{cargo run -p quant-lib --example 15\_full\_pipeline}\\
+Run: \texttt{cargo run -p quant-lib --example 16\_trait\_compose}
+\end{companioncode}
+
+\section{Learning Objectives}
+
+This chapter consolidates the ecosystem built in Chapters 6--14 into a
+single facade crate. After completing it you can:
+
+\begin{itemize}
+    \item Understand the facade pattern as the final consolidation step
+    \item Use the module structure of \crate{quant-lib} and its re-exports of the underlying crates
+    \item Use the prelude for ergonomic one-line imports
+    \item Compose pluggable components via the \texttt{BacktestBuilder} fluent API
+    \item Run the end-to-end pipeline that ties five crates together
+\end{itemize}
+
+\section{Introduction: From Crates to a Library}
+
+Chapters 1 through 14 built nine specialised crates: \crate{quant-core},
+\crate{quant-timeseries}, \crate{quant-vol}, \crate{quant-stochastic},
+\crate{quant-options}, \crate{quant-portfolio}, \crate{quant-factors},
+\crate{quant-microstructure}, and \crate{quant-backtest}. Each crate
+is independently useful, but a downstream user who wants the whole
+ecosystem would rather depend on one crate than nine. \crate{quant-lib}
+is that one crate.
+
+\begin{keyinsight}
+\crate{quant-lib} is purely a re-export facade. It adds \emph{zero}
+new logic. Every line in its source is \texttt{pub mod} or
+\texttt{pub use}. The math, types, and traits all live in the
+underlying crates. The facade exists to give downstream projects a
+single dependency and a unified namespace.
+\end{keyinsight}
+
+\section{The Facade Pattern}
+
+A \emph{facade} is a structural pattern: a single object (here, a
+crate) that provides a simplified, unified interface to a larger body
+of code. The facade does not implement new behaviour; it delegates.
+
+In Rust, the facade crate is structurally tiny:
+
+\begin{lstlisting}[language=Rust]
+// crates/quant-lib/src/lib.rs (excerpt)
+pub mod prelude;
+
+#[cfg(feature = "core")]
+pub mod core {
+    pub use quant_core::*;
+}
+
+#[cfg(feature = "options")]
+pub mod options {
+    pub use quant_options::*;
+}
+
+#[cfg(feature = "backtest")]
+pub mod backtest {
+    pub use quant_backtest::*;
+}
+
+// ... other modules ...
+\end{lstlisting}
+
+Each module is a thin re-export. Downstream code can write either
+\texttt{use quant\_core::mean} or \texttt{use quant\_lib::core::mean}---
+both resolve to the same function. The facade adds a layer of
+indirection that costs nothing at runtime (everything is monomorphised
+away) but gives the user a single dependency to track.
+
+\section{Module Map}
+
+\crate{quant-lib} organises the ecosystem into ten modules, one per
+underlying crate plus a dedicated \module{traits} module for the
+pluggable component trait catalogue.
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Module} & \textbf{Source crate} & \textbf{Contents} \\
+\midrule
+\func{core}          & \crate{quant-core}          & moments, rolling windows, RNG, GBM \\
+\func{traits}        & \crate{quant-core}          & Pluggable component traits \\
+\func{risk}          & \crate{quant-core}          & PSR, DSR, Calmar, Omega, Ulcer \\
+\func{timeseries}    & \crate{quant-timeseries}    & OLS, ACF, ADF, frac-diff, CUSUM \\
+\func{vol}           & \crate{quant-vol}           & EWMA, ARCH, GARCH \\
+\func{stochastic}    & \crate{quant-stochastic}    & Brownian, GBM, Monte Carlo \\
+\func{options}       & \crate{quant-options}       & Black-Scholes, Greeks, IV \\
+\func{portfolio}     & \crate{quant-portfolio}     & Markowitz, tangency, CAPM, VaR \\
+\func{factors}       & \crate{quant-factors}       & PCA, Fama-French, attribution \\
+\func{microstructure}& \crate{quant-microstructure}& LOB, OFI, impact, VWAP \\
+\func{backtest}      & \crate{quant-backtest}      & triple-barrier, purged CV, Kelly \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{The Prelude}
+
+The prelude pulls in the most commonly used items from every module
+so that user code can start with a single import:
+
+\begin{lstlisting}[language=Rust]
+use quant_lib::prelude::*;
+\end{lstlisting}
+
+The prelude is intentionally curated. It includes:
+\begin{itemize}
+    \item Core utilities: \func{mean}, \func{std\_dev}, \func{variance},
+          \func{RollingWindow}, \func{XorShift64}, \func{PriceSeries}.
+    \item Pluggable component traits: \func{CrossValidator}, \func{Labeler},
+          \func{BetSizer}, \func{StochasticProcess}, \func{OptionPricer},
+          \func{Greeks}, \func{FactorModel}, \func{ImpactModel},
+          \func{OrderBookOps}, \func{SampleWeighter},
+          \func{StructuralBreakDetector}.
+    \item Risk metrics: \func{probabilistic\_sharpe\_ratio},
+          \func{deflated\_sharpe\_ratio}, \func{calmar\_ratio},
+          \func{omega\_ratio}, \func{information\_ratio},
+          \func{ulcer\_index}.
+    \item Time series: \func{ols}, \func{adf\_test}, \func{fracDiff},
+          \func{OlsFit}.
+    \item Volatility: \func{ewma\_vol}, \func{ArchModel},
+          \func{GarchModel}.
+    \item Stochastic: \func{gbm}, \func{brownian\_motion},
+          \func{bs\_call}, \func{bs\_put}, \func{mc\_call},
+          \func{mc\_put}.
+    \item Options: \func{delta}, \func{gamma}, \func{vega},
+          \func{theta}, \func{implied\_vol}.
+    \item Portfolio: \func{Portfolio}, \func{efficient\_frontier\_point},
+          \func{min\_variance\_portfolio}, \func{tangency\_portfolio},
+          \func{sharpe\_ratio}.
+    \item Factors: \func{pca}, \func{ff3\_regression},
+          \func{risk\_attribution}, \func{PcaResult},
+          \func{FF3Exposure}.
+    \item Microstructure: \func{OrderBook}, \func{Side}, \func{vwap},
+          \func{sqrt\_impact}, \func{execution\_cost}.
+    \item Backtest: \func{GenericBacktest}, \func{BacktestBuilder},
+          \func{TripleBarrierLabel}, \func{TripleBarrierConfig},
+          \func{FixedHorizonLabeler}, \func{KellyBetSizer},
+          \func{WalkForward}, \func{WalkForwardConfig},
+          \func{PurgedKFoldConfig}, \func{triple\_barrier\_label},
+          \func{purged\_kfold\_splits}, \func{sample\_weights},
+          \func{kelly\_fraction}, \func{walk\_forward\_efficiency},
+          \func{afml\_backtest}.
+\end{itemize}
+
+Items not in the prelude are still reachable through the module path,
+e.g., \texttt{quant\_lib::backtest::EqualBetSizer}. The prelude is a
+convenience, not a gate.
+
+\section{Feature Flags for Module Gating}
+
+The \crate{quant-lib} \texttt{Cargo.toml} exposes each module behind a
+feature flag so users pay only for what they compile:
+
+\begin{lstlisting}
+[features]
+default = ["all"]
+all = ["core", "timeseries", "vol", "stochastic",
+        "options", "portfolio", "factors",
+        "microstructure", "backtest"]
+\end{lstlisting}
+
+A user who needs only option pricing can disable defaults and pick
+two modules:
+
+\begin{lstlisting}
+[dependencies]
+quant-lib = { version = "0.1", default-features = false, features = ["core", "options"] }
+\end{lstlisting}
+
+The rest of the crate is not compiled. In a CI pipeline that builds
+only the pricing surface, this shaves minutes off the build.
+
+\section{Root-Level Convenience Re-exports}
+
+Beyond the module re-exports, \crate{quant-lib} also exposes a small
+set of root-level convenience functions so that the most common
+operations do not require a module prefix:
+
+\begin{lstlisting}[language=Rust]
+// These three are equivalent:
+quant_lib::core::mean(&data);
+quant_lib::mean(&data);           // root re-export
+quant_core::mean(&data);          // direct from source
+
+// Same for stochastic, options, portfolio, backtest:
+quant_lib::bs_call(s, k, r, sigma, t);
+quant_lib::delta(s, k, r, sigma, t);
+quant_lib::tangency_portfolio(&cov, rf);
+quant_lib::kelly_fraction(p, b, a);
+\end{lstlisting}
+
+The root re-exports exist because these functions account for the
+overwhelming majority of calls in examples and tests. Putting them at
+the root saves typing without obscuring the module structure.
+
+\section{Composable Backtest Architecture}
+
+The headline feature of the trait architecture is the \func{GenericBacktest}
+engine, generic over three pluggable components:
+
+\begin{lstlisting}[language=Rust]
+pub struct GenericBacktest<L, CV, BS>
+where
+    L: Labeler,
+    CV: CrossValidator,
+    BS: BetSizer,
+{
+    labeler: L,
+    validator: CV,
+    sizer: BS,
+    entry_step: usize,
+}
+\end{lstlisting}
+
+The bound \texttt{where L: Labeler, CV: CrossValidator, BS: BetSizer}
+is the entire contract. Adding a new labeler means writing an
+\texttt{impl Labeler for MyLabeler}---no engine changes, no new
+features, no feature flags.
+
+\subsection{The Builder API}
+
+The \func{BacktestBuilder} gives a fluent API for composition:
+
+\begin{lstlisting}[language=Rust]
+let bt = BacktestBuilder::new()
+    .labeler(FixedHorizonLabeler::new(5, 0.01))
+    .cv(WalkForward::new(WalkForwardConfig::rolling(100, 25, 25)))
+    .sizer(KellyBetSizer::new(0.5))   // half Kelly
+    .entry_step(5)
+    .build();
+
+let results = bt.run(&prices, &returns)?;
+\end{lstlisting}
+
+Swapping one component is a one-line change. Example~16 in the
+companion code runs the same strategy with four different bet sizers
+(full Kelly, half Kelly, fixed 10\%, equal 100\%) and two different
+validators (rolling vs.\ anchored walk-forward) by changing one
+argument in the builder call.
+
+\subsection{What the Builder Checks}
+
+The builder rejects incomplete configurations at \emph{build time},
+returning \func{BacktestError}:
+
+\begin{itemize}
+    \item Missing labeler: \texttt{BacktestError::MissingLabeler}.
+    \item Missing cross-validator: \texttt{BacktestError::MissingCrossValidator}.
+    \item Missing bet sizer: \texttt{BacktestError::MissingBetSizer}.
+    \item Entry step out of range: \texttt{BacktestError::InvalidEntryStep}.
+\end{itemize}
+
+This means misconfigurations are caught before any data is loaded,
+not in the middle of a 252-day backtest.
+
+\section{The End-to-End Pipeline}
+
+Example~15 in the companion code ties together five crates in a
+single pipeline:
+
+\begin{lstlisting}[language=Rust]
+use quant_lib::prelude::*;
+use quant_lib::backtest::{compute_position_size, kelly_from_returns};
+use quant_lib::core::simple_returns;
+
+// 1. Simulate a GBM price path (quant-stochastic).
+let mut rng = XorShift64::new(123);
+let prices = gbm(100.0, 0.08, 0.20, 1.0, 252, &mut rng);
+
+// 2. Price an ATM call with the trait-based BlackScholes pricer.
+let pricer = quant_options::BlackScholes::new(0.05, 0.20);
+let call = pricer.price(100.0, 100.0, 1.0, OptionType::Call)?;
+
+// 3. Analytical Greeks via the Greeks trait.
+let d = pricer.delta(100.0, 100.0, 1.0, OptionType::Call)?;
+let g = pricer.gamma(100.0, 100.0, 1.0)?;
+let v = pricer.vega(100.0, 100.0, 1.0)?;
+let th = pricer.theta(100.0, 100.0, 1.0, OptionType::Call)?;
+
+// 4. Kelly fraction from synthetic trade returns.
+let rets = simple_returns(&prices);
+let f_kelly = kelly_from_returns(&rets);
+
+// 5. Walk-forward cross-validation on the simulated path.
+let wf = WalkForward::new(WalkForwardConfig::rolling(120, 30, 30));
+let splits = wf.splits(0, prices.len());
+
+// 6. Run the generic composable backtest.
+let bt = GenericBacktest::new(
+    FixedHorizonLabeler::new(5, 0.01),
+    WalkForward::new(WalkForwardConfig::rolling(100, 25, 25)),
+    KellyBetSizer::new(0.5),
+    5,
+);
+let results = bt.run(&prices, &bt_returns)?;
+\end{lstlisting}
+
+\begin{companioncode}{quant-lib}
+See \texttt{crates/quant-lib/examples/15\_full\_pipeline.rs} and
+\texttt{crates/quant-lib/examples/16\_trait\_compose.rs}. Run with
+\texttt{cargo run -p quant-lib --example 15\_full\_pipeline}.
+\end{companioncode}
+
+This is the ``hello world'' of the facade: every step uses a different
+sub-crate, all reached through \crate{quant-lib}. The pipeline
+demonstrates that the trait-based architecture composes cleanly---the
+\func{BlackScholes} pricer implements \func{OptionPricer} and
+\func{Greeks}; the \func{FixedHorizonLabeler} implements
+\func{Labeler}; the \func{WalkForward} validator implements
+\func{CrossValidator}; the \func{KellyBetSizer} implements
+\func{BetSizer}. The \func{GenericBacktest} engine stitches them
+together without knowing any of their concrete types.
+
+\section{The 16-Example Tour}
+
+\crate{quant-lib} ships 16 numbered examples that progress from
+single-crate usage to multi-crate composition:
+
+\begin{center}
+\begin{tabular}{rlp{6.5cm}}
+\toprule
+\# & \textbf{Example} & \textbf{Crates exercised} \\
+\midrule
+01 & mean\_variance           & core \\
+02 & returns\_basics          & core \\
+03 & rolling\_window          & core \\
+04 & random\_walk             & core, stochastic \\
+05 & ols\_regression          & core, timeseries \\
+06 & stationarity             & timeseries \\
+07 & volatility               & vol \\
+08 & options\_greeks          & options \\
+09 & portfolio\_frontier      & portfolio \\
+10 & pca\_factors             & factors \\
+11 & microstructure\_lob      & microstructure \\
+12 & triple\_barrier          & backtest \\
+13 & purged\_cv               & backtest \\
+14 & kelly\_sizing            & backtest \\
+15 & full\_pipeline           & stochastic, options, backtest \\
+16 & trait\_compose           & backtest (builder pattern) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Examples 1--14 each exercise a single sub-crate. Example~15 is the
+multi-crate pipeline. Example~16 is the composable backtest with four
+bet sizers and two validators. The progression is deliberate: each
+example introduces one new concept, so a reader working through them
+in order never encounters a dependency they have not already seen.
+
+\section{Non-Destructive by Design}
+
+\crate{quant-lib} is a strict facade. The source crates continue to
+work without \crate{quant-lib} in their dependency tree:
+
+\begin{lstlisting}[language=bash]
+# quant-backtest still builds without quant-lib:
+cargo test -p quant-backtest
+\end{lstlisting}
+
+The 20-test TDD contract for \crate{quant-lib} (Appendix~B lists the
+full suite) includes a test that verifies this property: the source
+crates must pass independently. This guarantees that the facade
+remains a convenience, not a coupling mechanism. A downstream project
+that depends on \crate{quant-backtest} directly, without
+\crate{quant-lib}, is not broken when \crate{quant-lib} adds a new
+re-export.
+
+\begin{keyinsight}
+The facade is a one-way dependency: \crate{quant-lib} depends on the
+source crates, never the reverse. If you find yourself writing
+\texttt{use quant\_lib} inside a source crate, stop---you are
+creating a cycle. The source crates must remain oblivious to the
+facade's existence.
+\end{keyinsight}
+
+\section{Versioning Strategy}
+
+When a source crate bumps its version (e.g.,
+\crate{quant-options} from 0.1 to 0.2), \crate{quant-lib} bumps its
+own version and updates the \texttt{Cargo.toml} dependency. Downstream
+code that uses \crate{quant-lib} sees a single version bump, not
+nine. This is the main practical benefit of the facade for consumers:
+the dependency graph has one node, not nine.
+
+\section{When to Use quant-lib vs.\ Direct Crates}
+
+\begin{center}
+\begin{tabular}{lp{8cm}}
+\toprule
+\textbf{Use} & \textbf{When} \\
+\midrule
+\crate{quant-lib}        & You want the whole ecosystem, one dependency, and unified imports. \\
+\crate{quant-core}       & You need only moments, rolling windows, or the trait catalogue. \\
+\crate{quant-options}    & You are building a pricing tool and do not need backtesting. \\
+\crate{quant-backtest}   & You are building a research tool and do not need pricing. \\
+individual crates        & You want minimum compile time and a small dependency tree. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+There is no wrong answer. The facade and the source crates are both
+first-class supported surfaces. The choice is about ergonomics versus
+minimality.
+
+\section{Exercises}
+
+\begin{enumerate}
+    \item \textbf{Module discovery.} List the public items re-exported
+          by \crate{quant-lib::portfolio}. How many of them are
+          types, how many are functions, and how many are traits?
+    \item \textbf{Prelude contents.} The prelude does not include
+          \func{EqualBetSizer} or \func{FixedBetSizer}. Why? Add them
+          to your own local prelude and rebuild---do any examples
+          break?
+    \item \textbf{Feature flags.} Build \crate{quant-lib} with
+          \texttt{default-features = false, features = ["core",
+          "options"]} and run example 08. Which modules are
+          unavailable? What is the compile-time difference?
+    \item \textbf{Builder swap.} Modify example 16 to use a
+          \func{TripleBarrierLabeler} instead of
+          \func{FixedHorizonLabeler}. What single line do you change?
+          Does the rest of the pipeline still compile?
+    \item \textbf{Pipeline extension.} Extend example 15 to compute
+          the implied volatility from the simulated option price
+          using \func{implied\_vol}. How many lines do you add? Do
+          you need to change any existing line?
+    \item \textbf{Root re-exports.} Identify three functions in the
+          root re-export list that you would remove if you were
+          designing the facade for a minimal API. Justify each
+          choice.
+    \item \textbf{Non-destructive check.} Run \texttt{cargo test -p
+          quant-backtest} without \crate{quant-lib} in the workspace.
+          Confirm that all tests still pass. This verifies the
+          non-destructive property.
+    \item \textbf{Cycle detection.} Search the source crates for any
+          \texttt{use quant\_lib} statement. If you find one, it is a
+          bug. Report the file and line.
+\end{enumerate}
+
+\section{Summary}
+
+\crate{quant-lib} is the unified library: a
+single crate that re-exports nine specialised crates under a unified
+namespace. It adds no new logic, depends on every source crate, and
+exposes a curated prelude for ergonomic imports. The
+\func{GenericBacktest} engine, built on the pluggable trait
+catalogue, makes the library composable: swapping a labeler,
+validator, or bet sizer is a one-line change via the
+\func{BacktestBuilder} fluent API. The 16 examples progress from
+single-crate usage to multi-crate pipelines, giving the reader a
+guided tour of the ecosystem. The facade is non-destructive: every
+source crate continues to work without it, and the 20-test contract
+includes a test that verifies this property.

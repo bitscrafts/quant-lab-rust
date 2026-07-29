@@ -1,0 +1,253 @@
+\chapter{Dataset Sources}
+\label{app:datasets}
+
+This appendix documents every dataset bundled with the book, its
+format, its provenance, and how to obtain more data from public
+sources for extending the examples. All bundled files live in
+\texttt{crates/quant-lab/data/} and are loaded by the
+\crate{quant-lib} examples via the helpers in
+\texttt{examples/common/mod.rs}.
+
+\section{Bundled Datasets}
+
+\subsection{Synthetic Stock Prices (\texttt{stock\_prices.csv})}
+
+A 63-row synthetic OHLCV series for a single fictitious stock from
+2 January 2024 to 28 March 2024. Used by the early examples (Ch.~3, 4,
+5) where a clean, controlled series is preferable to real market data.
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+\textbf{Field} & \textbf{Description} \\
+\midrule
+\texttt{date} & Trading date (ISO 8601) \\
+\texttt{open, high, low, close} & Daily OHLC prices \\
+\texttt{volume} & Daily traded volume \\
+\texttt{adj\_close} & Dividend/split-adjusted close (equals close here) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{lstlisting}[language=Rust]
+use quant_lib::prelude::*;
+let path = common::stock_csv_path(env!("CARGO_MANIFEST_DIR"));
+let bars = common::load_stock_csv(&path);
+\end{lstlisting}
+
+\subsection{B3 Brazilian Stocks (8 JSON files)}
+
+Daily OHLCV data for eight liquid stocks traded on B3 (Brasil Bolsa
+Balcão), the S\~ao Paulo exchange. Each file contains 1{,}247 daily
+bars from 22 July 2021 to 26 July 2024---roughly three years of
+trading. Prices are in Brazilian Reais (BRL).
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Symbol} & \textbf{Company} & \textbf{Sector} \\
+\midrule
+\texttt{PETR4} & Petr\'oleo Brasileiro (Petrobras) & Energy \\
+\texttt{VALE3} & Vale & Mining \\
+\texttt{ITSA4} & Ita\'usa (Ita\'u) & Financial \\
+\texttt{BBDC4} & Bradesco & Financial \\
+\texttt{B3SA3} & B3 (exchange operator) & Financial \\
+\texttt{ABEV3} & Ambev & Consumer staples \\
+\texttt{GGBR4} & Gerdau & Steel \\
+\texttt{WEGE3} & WEG & Industrial \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\marginnote{%
+\textbf{Why Brazilian stocks?}\\[0.3em]
+B3 daily data is freely available, covers liquid names, and gives the
+examples a consistent cross-sectional universe for portfolio and
+factor exercises. The same code works with any OHLCV source---US
+equities, ETFs, or crypto---by swapping the data loader.
+}
+
+\paragraph{JSON format.}
+Each file is a JSON array of objects with keys
+\texttt{date, open, high, low, close, volume}. The bundled parser
+in \texttt{common/mod.rs} is a minimal splitter that relies on the
+fixed key order; for general JSON, use \texttt{serde\_json}.
+
+\begin{lstlisting}[language=Rust]
+use quant_lib::prelude::*;
+let path = common::b3_json_path(env!("CARGO_MANIFEST_DIR"), "PETR4");
+let bars = common::load_json_ohlcv(&path);
+\end{lstlisting}
+
+\subsection{Credit Card Fraud Sample (\texttt{creditcard\_sample.csv})}
+
+A 20-row anonymised sample from the Kaggle Credit Card Fraud Detection
+dataset. Each row is one transaction; columns \texttt{V1}--\texttt{V28}
+are PCA-transformed features, \texttt{Amount} is the transaction value,
+and \texttt{Class} is $1$ for fraud, $0$ otherwise. Used in Ch.~1--2
+for the fraud-detection and loan-default classifiers.
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+\textbf{Field} & \textbf{Description} \\
+\midrule
+\texttt{Time} & Seconds elapsed since first transaction \\
+\texttt{V1}--\texttt{V28} & PCA-transformed features (anonymised) \\
+\texttt{Amount} & Transaction value (EUR) \\
+\texttt{Class} & $1$ = fraud, $0$ = legitimate \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{warning}
+The bundled sample is too small for real modelling. It exists only to
+make the chapter examples runnable offline. For actual experiments,
+download the full 284{,}807-row dataset from Kaggle (see below).
+\end{warning}
+
+\section{Public Data Sources for Extending the Examples}
+
+The bundled data is enough to run every example in the book. To go
+further---longer histories, cross-sectional studies, alternative
+asset classes---the following sources are all free and downloadable
+without registration beyond an email.
+
+\subsection{Equity OHLCV}
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Source} & \textbf{URL} & \textbf{Format} \\
+\midrule
+Stooq & \texttt{stooq.com/q/d/?s=\{symbol\}\&i=d} & CSV OHLCV \\
+Yahoo Finance & \texttt{finance.yahoo.com/quote/\{TICKER\}/history} & CSV OHLCV \\
+Binance API & \texttt{api.binance.com/api/v3/klines} & JSON OHLCV \\
+Alpha Vantage & \texttt{alphavantage.co} (free tier) & JSON/CSV \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Stooq is the easiest for bulk download: it serves daily and intraday
+bars for US, European, and Brazilian tickers with no API key. Yahoo
+Finance covers the widest universe. Binance is the primary source for
+crypto OHLCV via a clean REST API.
+
+\subsection{Factor and Macro Data}
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Source} & \textbf{URL} & \textbf{Content} \\
+\midrule
+Ken French Data Library & \texttt{mba.tuck.dartmouth.edu/pages/faculty/ken.french} & Fama-French factors, momentum, industry portfolios \\
+FRED (St.\ Louis Fed) & \texttt{fred.stlouisfed.org} & Macro series (rates, CPI, vix) \\
+AQR Data Sets & \texttt{aqr.com/Insights/Datasets} & Factor returns, Betting-Against-Beta \\
+World Bank & \texttt{data.worldbank.org} & Country-level macro indicators \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The Ken French library is the canonical source for the factor data
+used in Ch.~12. FRED is the standard for US risk-free rates
+(\texttt{DGS3MO}, \texttt{DGS10}) and the VIX (\texttt{VIXCLS}).
+
+\subsection{Options Data}
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Source} & \textbf{URL} & \textbf{Content} \\
+\midrule
+OptionMetrics & (institutional, paid) & Historical option chains \\
+CBOE & \texttt{cboe.com} & Free end-of-day quotes, VIX history \\
+Yahoo Finance & \texttt{finance.yahoo.com} & Basic option chains \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The book's option examples (Ch.~10) are self-contained: they price
+from the Black-Scholes formula rather than reading market option
+prices. For implied-volatility surface studies, CBOE's free VIX
+history is the practical starting point.
+
+\subsection{Microstructure and LOB Data}
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Source} & \textbf{URL} & \textbf{Content} \\
+\midrule
+LOBSTER & \texttt{lobsterdata.com} & NASDAQ ITCH, 10 levels \\
+Databento & \texttt{databento.com} & Paid, multi-venue L2/L3 \\
+SEC EDGAR & \texttt{sec.gov/edgar} & Corporate filings (not LOB) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+LOBSTER is the academic standard for limit-order-book research, with
+free access for academics. The book's microstructure examples
+(Ch.~13) use a simulated book to keep the companion code
+self-contained.
+
+\section{Loading Data in Practice}
+
+The \crate{quant-lib} examples all use the helpers in
+\texttt{examples/common/mod.rs}, which resolve paths relative to
+\texttt{CARGO\_MANIFEST\_DIR} so they work regardless of where the
+binary is invoked from:
+
+\begin{lstlisting}[language=Rust]
+#[path = "common/mod.rs"]
+mod common;
+
+fn main() {
+    // Synthetic single-stock CSV
+    let bars = common::load_stock_csv(
+        &common::stock_csv_path(env!("CARGO_MANIFEST_DIR"))
+    );
+
+    // Real B3 stock JSON
+    let bars = common::load_json_ohlcv(
+        &common::b3_json_path(env!("CARGO_MANIFEST_DIR"), "PETR4")
+    );
+}
+\end{lstlisting}
+
+To use your own data, either drop a file in
+\texttt{crates/quant-lab/data/} (and it will be found by the helpers),
+or write a loader that returns \texttt{Vec<OhlcvBar>} and pass it to
+the example code. The \texttt{OhlcvBar} struct is:
+
+\begin{lstlisting}[language=Rust]
+pub struct OhlcvBar {
+    pub date: String,
+    pub open: f64,
+    pub high: f64,
+    pub low: f64,
+    pub close: f64,
+    pub volume: f64,
+}
+\end{lstlisting}
+
+\section{Reproducibility and Licensing}
+
+\begin{itemize}
+    \item The B3 JSON files were downloaded from a public data provider
+      and are included here for educational use; verify the provider's
+      terms before redistributing.
+    \item The synthetic \texttt{stock\_prices.csv} and
+      \texttt{creditcard\_sample.csv} are generated by the book and are
+      public domain.
+    \item Public-source data (Stooq, Yahoo, Ken French, FRED) is
+      generally free for research and personal use; check each
+      provider's terms for commercial use.
+\end{itemize}
+
+\begin{keyinsight}
+Every example in the book can be reproduced from the bundled data
+alone. The public sources listed here are for readers who want to
+extend the analysis to other tickers, longer windows, or alternative
+asset classes. The companion code's loader abstraction means switching
+data sources is a one-function change.
+\end{keyinsight}

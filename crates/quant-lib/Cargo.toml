@@ -1,0 +1,38 @@
+[package]
+name = "quant-lib"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Unified quantitative finance library (facade re-exporting Phases 6-14.5)"
+
+[dependencies]
+quant-core = { path = "../quant-core" }
+quant-timeseries = { path = "../quant-timeseries" }
+quant-vol = { path = "../quant-vol" }
+quant-stochastic = { path = "../quant-stochastic" }
+quant-options = { path = "../quant-options" }
+quant-portfolio = { path = "../quant-portfolio" }
+quant-factors = { path = "../quant-factors" }
+quant-microstructure = { path = "../quant-microstructure" }
+quant-backtest = { path = "../quant-backtest" }
+
+[features]
+default = ["all"]
+all = [
+    "core", "timeseries", "vol", "stochastic", "options",
+    "portfolio", "factors", "microstructure", "backtest",
+]
+core = []
+timeseries = ["core"]
+vol = ["core", "timeseries"]
+stochastic = ["core"]
+options = ["stochastic"]
+portfolio = ["core", "timeseries"]
+factors = ["core", "timeseries", "portfolio"]
+microstructure = ["core"]
+backtest = ["core", "timeseries", "portfolio"]
+
+[dev-dependencies]
+approx = "0.5"

@@ -60,7 +60,10 @@ quant-lab-rust/
 │   ├── quant-vol/         # Ch08: EWMA, ARCH, GARCH
 │   ├── quant-stochastic/  # Ch09: Brownian motion, Monte Carlo
 │   ├── quant-options/     # Ch10: Black-Scholes, Greeks, IV
-│   └── quant-portfolio/   # Ch11: Markowitz, efficient frontier, CAPM
+│   ├── quant-portfolio/   # Ch11: Markowitz, efficient frontier, CAPM
+│   ├── quant-factors/     # Ch12: PCA, Fama-French
+│   ├── quant-microstructure/ # Ch13: Limit order book, OFI, impact
+│   └── quant-backtest/    # Ch14: Triple-barrier, purged CV, Kelly
 ├── data/                  # Sample datasets (bundled)
 └── book/                  # LaTeX book source
     ├── main.tex           # Main document
@@ -118,20 +121,20 @@ pdflatex -output-directory=build main.tex
 | 8 | Volatility | `quant-vol` | 17 | EWMA, ARCH, GARCH, Nelder-Mead MLE |
 | 9 | Stochastic | `quant-stochastic` | 16 | Brownian motion, GBM, Poisson, Monte Carlo |
 
-### Part IV: Derivatives & Portfolio (Expert) - IN PROGRESS
+### Part IV: Derivatives & Portfolio (Expert) - COMPLETE
 
 | Ch | Title | Crate | Tests | Key Concepts |
 |----|-------|-------|-------|--------------|
 | 10 | Options | `quant-options` | 17 | Black-Scholes, Greeks, implied volatility |
 | 11 | Portfolio | `quant-portfolio` | 47 | Markowitz, efficient frontier, tangency, CAPM, VaR/CVaR |
-| 12 | Factors | `quant-factors` | - | PCA, Fama-French (next) |
+| 12 | Factors | `quant-factors` | 22 | PCA, Fama-French |
 
-### Part V: Advanced (Expert)
+### Part V: Advanced (Expert) - COMPLETE
 
 | Ch | Title | Crate | Tests | Key Concepts |
 |----|-------|-------|-------|--------------|
-| 13 | Microstructure | `quant-microstructure` | - | Limit order book, order flow |
-| 14 | AFML Bridge | `quant-backtest` | - | Triple-barrier, purged CV |
+| 13 | Microstructure | `quant-microstructure` | 42 | Limit order book, OFI, market impact |
+| 14 | AFML Backtest | `quant-backtest` | 34 | Triple-barrier, sample weights, purged CV, Kelly |
 
 ### Final: Unified Library
 

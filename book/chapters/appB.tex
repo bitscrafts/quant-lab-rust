@@ -1,0 +1,341 @@
+\chapter{Rust Patterns for Finance}
+\label{app:rust}
+
+This appendix documents the Rust patterns that recur across the
+\crate{quant-lab} crates. Each pattern is illustrated with a minimal
+example drawn from the actual codebase. The goal is to give the reader
+a vocabulary for the design decisions made in the companion code and a
+mental model for extending it.
+
+\section{The Trait as Extension Point}
+
+The single most important pattern in this book is the \emph{trait as
+extension point}. The library defines a trait; the user implements it
+for their specific model; the generic engine drives the computation.
+This is how every pluggable component in \crate{quant-lab} works.
+
+\begin{lstlisting}[language=Rust]
+// quant-core/src/traits/labeler.rs
+pub trait Labeler {
+    type Input;
+    type Label;
+
+    fn label(&self, input: &Self::Input) -> Vec<Self::Label>;
+}
+\end{lstlisting}
+
+A concrete implementation---the triple-barrier labeler from
+\crate{quant-backtest}---supplies the method body:
+
+\begin{lstlisting}[language=Rust]
+pub struct TripleBarrier {
+    pub take_profit: f64,
+    pub stop_loss: f64,
+    pub time_barrier: usize,
+}
+
+impl Labeler for TripleBarrier {
+    type Input = (Vec<f64>, usize); // (prices, entry_index)
+    type Label = i8;                // +1, -1, or 0
+
+    fn label(&self, input: &Self::Input) -> Vec<Self::Label> {
+        // ... barrier-touch logic ...
+    }
+}
+\end{lstlisting}
+
+\begin{keyinsight}
+The trait defines the contract; the struct implements it; the generic
+engine is oblivious to the concrete type. This is how Rust achieves
+polymorphism without dynamic dispatch when performance matters
+(monomorphisation) and with dynamic dispatch when flexibility matters
+(\texttt{dyn Trait}).
+\end{keyinsight}
+
+\section{Pluggable Component Trait Catalogue}
+
+The \crate{quant-core} traits module exposes the cross-cutting
+interfaces used by the higher-level crates. Each trait corresponds to a
+pluggable decision in a quantitative pipeline.
+
+\begin{center}
+\begin{tabular}{lp{8cm}}
+\toprule
+\textbf{Trait} & \textbf{Role} \\
+\midrule
+\func{CrossValidator} & Produces train/test index splits (k-fold, walk-forward, purged) \\
+\func{Labeler} & Maps a price series to a label series (triple-barrier, fixed-horizon) \\
+\func{BetSizer} & Converts a signal into a position size (Kelly, equal, fixed) \\
+\func{SampleWeighter} & Assigns per-sample weights for training (return-based, time-decay) \\
+\func{StructuralBreakDetector} & Locates regime-change indices in a series (CUSUM, Z-score) \\
+\func{StochasticProcess} & Simulates a path $(S_0, \dots, S_T)$ (GBM, Brownian) \\
+\func{OptionPricer} & Prices a vanilla option (Black-Scholes, Monte Carlo) \\
+\func{Greeks} & Computes risk sensitivities ($\Delta, \Gamma, \nu, \Theta, \rho$) \\
+\func{FactorModel} & Maps returns to factor exposures (PCA, Fama-French) \\
+\func{ImpactModel} & Estimates market impact of an order (square-root, linear) \\
+\func{OrderBookOps} & Order book operations (add, cancel, match, depth) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Every trait in this table is used by at least one concrete struct in
+the companion crate, and every concrete struct is used in at least one
+example in \crate{quant-lib}.
+
+\section{Generic Engines with Static Dispatch}
+
+A backtest engine is generic over its labeler, cross-validator, and
+bet sizer. The user composes these at construction time and the compiler
+generates a specialised binary---no vtable overhead on the hot path.
+
+\begin{lstlisting}[language=Rust]
+// quant-backtest/src/generic.rs
+pub struct GenericBacktest<L, CV, BS>
+where
+    L: Labeler,
+    CV: CrossValidator,
+    BS: BetSizer,
+{
+    labeler: L,
+    validator: CV,
+    sizer: BS,
+    // ...
+}
+
+impl<L, CV, BS> GenericBacktest<L, CV, BS>
+where
+    L: Labeler,
+    CV: CrossValidator,
+    BS: BetSizer,
+{
+    pub fn run(&self, prices: &[f64]) -> BacktestResult {
+        let labels = self.labeler.label(&(prices.to_vec(), 0));
+        let splits = self.validator.splits(0, prices.len());
+        // ... drive the loop, calling self.sizer.size(...) per bar ...
+    }
+}
+\end{lstlisting}
+
+The bound \texttt{where L: Labeler, CV: CrossValidator, BS: BetSizer}
+is the entire contract. Adding a new labeler means writing an
+\texttt{impl Labeler for MyLabeler}---no engine changes.
+
+\section{The Builder Pattern for Composable Backtests}
+
+When a struct has many optional parameters, a builder gives a fluent
+API while keeping the internal representation compact.
+
+\begin{lstlisting}[language=Rust]
+// quant-backtest/src/generic.rs
+pub struct BacktestBuilder {
+    labeler: Option<Box<dyn Labeler<Input = (Vec<f64>, usize), Label = i8>>>,
+    sizer: Option<Box<dyn BetSizer>>,
+    // ... other pluggable components ...
+}
+
+impl BacktestBuilder {
+    pub fn new() -> Self { /* all None */ }
+
+    pub fn with_labeler<L: Labeler + 'static>(mut self, l: L) -> Self {
+        self.labeler = Some(Box::new(l));
+        self
+    }
+
+    pub fn with_sizer<BS: BetSizer + 'static>(mut self, bs: BS) -> Self {
+        self.sizer = Some(Box::new(bs));
+        self
+    }
+
+    pub fn build(self) -> Result<GenericBacktest<...>, BacktestError> {
+        // validate required fields, return Err if any missing
+    }
+}
+\end{lstlisting}
+
+Usage reads as a pipeline:
+
+\begin{lstlisting}[language=Rust]
+let bt = BacktestBuilder::new()
+    .with_labeler(TripleBarrier::new(0.02, 0.01, 5))
+    .with_sizer(KellySizer::new(0.5))
+    .build()?;
+\end{lstlisting}
+
+\marginnote{%
+\textbf{Static vs.\ dynamic}\\[0.3em]
+The engine uses static dispatch (generics) for the hot path, but the
+builder uses \texttt{Box<dyn Trait>} for storage convenience. The
+trade-off is a single vtable call per bar, negligible against the
+per-bar computation.
+}
+
+\section{Newtype Wrappers for Domain Safety}
+
+A bare \texttt{f64} can be a price, a return, a volatility, or a
+probability---the compiler cannot tell them apart. A newtype wrapper
+adds zero-cost type safety.
+
+\begin{lstlisting}[language=Rust]
+pub struct Price(f64);
+pub struct LogReturn(f64);
+pub struct Volatility(f64);
+
+impl Price {
+    pub fn log_return(&self, prev: &Price) -> LogReturn {
+        LogReturn((self.0 / prev.0).ln())
+    }
+}
+\end{lstlisting}
+
+The compiler now refuses to add a \texttt{Price} to a
+\texttt{Volatility}, even though both wrap an \texttt{f64}. The
+\crate{quant-lab} crates use newtypes sparingly---mostly in public
+APIs---to avoid ceremony in internal computation.
+
+\section{Error Handling with \texttt{Result}}
+
+Library code never panics. Every fallible operation returns
+\texttt{Result<T, E>}, with the error type implementing
+\texttt{std::error::Error}. The crate-level error is an enum:
+
+\begin{lstlisting}[language=Rust]
+// quant-core/src/error.rs
+#[derive(Debug, thiserror::Error)]
+pub enum QuantError {
+    #[error("insufficient data: required {required}, got {actual}")]
+    InsufficientData { required: usize, actual: usize },
+
+    #[error("singular matrix: {0}")]
+    SingularMatrix(String),
+
+    #[error("optimisation failed to converge")]
+    NonConvergence,
+
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+}
+\end{lstlisting}
+
+The \texttt{InsufficientData} variant appears in the ADF test
+(too few observations for the lag order), \texttt{SingularMatrix} in
+OLS regression (collinear regressors), and \texttt{NonConvergence} in
+implied-volatility inversion. Callers use \texttt{?} to propagate:
+
+\begin{lstlisting}[language=Rust]
+fn sharpe(returns: &[f64], rf: f64) -> Result<f64, QuantError> {
+    let m = mean(returns);
+    let s = std_dev(returns).ok_or(QuantError::InsufficientData {
+        required: 2,
+        actual: returns.len(),
+    })?;
+    Ok((m - rf) / s * 252.0_f64.sqrt())
+}
+\end{lstlisting}
+
+\section{Iterators and Lazy Evaluation}
+
+Most transformations are expressed as iterator adaptors, avoiding
+intermediate allocations:
+
+\begin{lstlisting}[language=Rust]
+let mean: f64 = returns.iter().sum::<f64>() / returns.len() as f64;
+let var: f64 = returns.iter()
+    .map(|r| (r - mean).powi(2))
+    .sum::<f64>() / (returns.len() - 1) as f64;
+\end{lstlisting}
+
+For rolling windows, the \func{RollingWindow} trait returns an
+iterator of slices, letting the caller fold, map, or collect without
+the library dictating the output shape.
+
+\section{Feature Flags for Module Gating}
+
+The \crate{quant-lib} facade crate exposes every submodule behind a
+feature flag, so users pay only for what they use:
+
+\begin{lstlisting}
+[features]
+default = ["all"]
+all = ["core", "timeseries", "vol", "stochastic",
+        "options", "portfolio", "factors",
+        "microstructure", "backtest"]
+\end{lstlisting}
+
+In Rust source, each module is conditionally compiled:
+
+\begin{lstlisting}[language=Rust]
+#[cfg(feature = "portfolio")]
+pub mod portfolio;
+\end{lstlisting}
+
+A user who needs only option pricing can depend on
+\crate{quant-lib} with \texttt{default-features = false, features =
+["options"]}, and the rest of the crate is not compiled.
+
+\section{The Facade Crate Pattern}
+
+\crate{quant-lib} is a \emph{facade}: it contains \texttt{pub mod}
+and \texttt{pub use} declarations, zero new logic. It re-exports the
+public APIs of \crate{quant-core}, \crate{quant-timeseries},
+\crate{quant-vol}, \dots\ under a single, versioned namespace.
+
+\begin{lstlisting}[language=Rust]
+// quant-lib/src/lib.rs
+pub use quant_core;
+pub use quant_timeseries;
+pub use quant_vol;
+// ...
+
+pub mod prelude {
+    pub use crate::core::*;
+    pub use crate::timeseries::*;
+    // ...
+}
+\end{lstlisting}
+
+Users write \texttt{use quant\_lib::prelude::*;} and get the entire
+public surface. Upgrading a single underlying crate (e.g.,
+\crate{quant-options} for a new pricing model) is a one-line change
+in \crate{quant-lib/Cargo.toml}; downstream code is unaffected.
+
+\section{Deterministic Randomness}
+
+Every stochastic example in this book uses a seeded RNG to be
+reproducible:
+
+\begin{lstlisting}[language=Rust]
+use quant_lib::prelude::*;
+let mut rng = XorShift64::new(42);
+let path = gbm(100.0, 0.05, 0.20, 1.0, 252, &mut rng)?;
+\end{lstlisting}
+
+The \func{Rng} trait abstracts the RNG so a Monte Carlo engine can
+swap \texttt{XorShift64} for a cryptographic generator without code
+changes. Tests use a fixed seed to make results bit-for-bit
+reproducible across machines and CI runs.
+
+\section{Testing Strategy}
+
+Every crate ships three kinds of tests:
+
+\begin{itemize}
+    \item \textbf{Unit tests} (in \texttt{src/}): small, fast, test one
+      function in isolation.
+    \item \textbf{Integration tests} (in \texttt{tests/}): exercise the
+      public API end-to-end.
+    \item \textbf{Examples} (in \texttt{examples/}): runnable
+      narratives; each chapter's companion code is an example.
+\end{itemize}
+
+Examples are the primary documentation: \texttt{cargo run -p quant-lib
+-example 08\_options\_greeks} reproduces the numbers printed in the
+chapter.
+
+\begin{keyinsight}
+The trait-based architecture makes the library testable at the
+composition boundary: a test that passes with a
+\texttt{FixedHorizonLabeler} will also pass with a
+\texttt{TripleBarrierLabeler} because both satisfy the same
+\texttt{Labeler} contract. Swapping implementations in tests is a
+one-line change.
+\end{keyinsight}

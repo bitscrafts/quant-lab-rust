@@ -1,0 +1,301 @@
+\chapter{Mathematical Notation}
+\label{app:notation}
+
+This appendix consolidates the notation used throughout the book. Each
+chapter introduces symbols locally; here we gather them in one place for
+quick reference. Where a symbol has multiple meanings depending on
+context, the chapter in which each meaning is established is cited.
+
+\section{General Conventions}
+
+\begin{itemize}
+    \item Scalars are set in italics: $x$, $y$, $r$, $\sigma$.
+    \item Vectors are bold lowercase: $\mathbf{w}$, $\mathbf{x}$, $\boldsymbol{\mu}$.
+    \item Matrices are bold uppercase: $\boldsymbol{\Sigma}$, $\mathbf{X}$,
+      $\mathbf{V}$.
+    \item Random variables are uppercase: $X$, $R$, $S$; their realisations
+      lowercase: $x$, $r$, $s$.
+    \item Time is indexed by $t$; a series of length $T$ runs $t = 1, \dots, T$.
+    \item Lags are written with subscripts: $r_{t-k}$ is the value $k$
+      periods before $t$.
+    \item Estimators wear a hat: $\hat{\mu}$, $\hat{\sigma}$, $\hat{\beta}$.
+    \item The indicator function $\mathbb{1}[A]$ is $1$ if condition $A$
+      holds, $0$ otherwise.
+\end{itemize}
+
+\section{Probability and Statistics}
+
+\begin{center}
+\begin{tabular}{cl}
+\toprule
+\textbf{Symbol} & \textbf{Meaning} \\
+\midrule
+$\E[X]$ & Expectation of $X$ \\
+$\Var(X)$ & Variance of $X$ \\
+$\Cov(X, Y)$ & Covariance of $X$ and $Y$ \\
+$\Corr(X, Y)$ & Pearson correlation \\
+$X \sim \Normal(\mu, \sigma^2)$ & $X$ is Gaussian with mean $\mu$, variance $\sigma^2$ \\
+$\argmin_{x} f(x)$ & The $x$ that minimises $f$ \\
+$\argmax_{x} f(x)$ & The $x$ that maximises $f$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Moments}
+
+The first four central moments of a sample $\{x_1, \dots, x_n\}$ with
+sample mean $\bar{x}$ are:
+
+\begin{align}
+\hat{\mu}_k = \frac{1}{n} \sum_{i=1}^{n} (x_i - \bar{x})^k
+\end{align}
+
+From these we obtain the dimensionless shape measures:
+
+\begin{align}
+\skewness &= \hat{\mu}_3 / \hat{\mu}_2^{3/2} \\
+\kurt &= \hat{\mu}_4 / \hat{\mu}_2^{2} \\
+\excesskurt &= \kurt - 3
+\end{align}
+
+The normal distribution has $\skewness = 0$ and $\excesskurt = 0$; financial
+returns typically show $\excesskurt > 0$ (fat tails, Ch.~6).
+
+\section{Returns}
+
+Let $P_t$ be the price at time $t$.
+
+\begin{center}
+\begin{tabular}{cll}
+\toprule
+\textbf{Symbol} & \textbf{Definition} & \textbf{Use} \\
+\midrule
+$r_t$ (simple) & $\simplereturn$ & P\&L attribution \\
+$z_t$ (log) & $\logreturn$ & Statistical modelling \\
+$\mu$ & $\E[r_t]$ (annualised) & Expected return \\
+$\sigma$ & $\sqrt{\Var(r_t)}$ (annualised) & Volatility \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\marginnote{%
+\textbf{Annualisation}\\[0.3em]
+Daily to annual: multiply mean by $252$, standard deviation by
+$\sqrt{252}$. Monthly to annual: multiply mean by $12$, standard
+deviation by $\sqrt{12}$.
+}
+
+Log returns are preferred for statistical work because they are
+additive over time:
+\begin{align}
+z_{t:n} = \ln\frac{P_t}{P_{t-n}} = \sum_{k=0}^{n-1} \ln\frac{P_{t-k}}{P_{t-k-1}} = \sum_{k=0}^{n-1} z_{t-k}.
+\end{align}
+
+Simple returns are preferred for portfolio P\&L because they aggregate
+across assets:
+\begin{align}
+r_p = \sum_{i=1}^{N} w_i r_i.
+\end{align}
+
+\section{Risk-Adjusted Performance}
+
+\begin{center}
+\begin{tabular}{cl}
+\toprule
+\textbf{Metric} & \textbf{Formula} \\
+\midrule
+$\sharpe$ & $\dfrac{\E[r_p] - r_f}{\sigma_p}$ \\
+Sortino & $\dfrac{\E[r_p] - r_f}{\sigma_{\text{downside}}}$ \\
+$\maxdd$ & $\max_{t} \left( \max_{s \le t} V_s - V_t \right)$ \\
+Calmar & $\dfrac{\text{annual return}}{\maxdd}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Here $V_t$ is the equity curve, $r_f$ the risk-free rate, and
+$\sigma_{\text{downside}}$ the standard deviation of returns below a
+target (typically zero or $r_f$).
+
+\section{Time Series}
+
+\begin{center}
+\begin{tabular}{cl}
+\toprule
+\textbf{Symbol} & \textbf{Meaning} \\
+\midrule
+$\rho_k = \Corr(r_t, r_{t-k})$ & Autocorrelation at lag $k$ ($\acf$) \\
+$\pi_k$ & Partial autocorrelation at lag $k$ ($\pacf$) \\
+$\adf$ & Augmented Dickey-Fuller test statistic \\
+$d$ & Differencing order (fractional allowed, Ch.~7) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+A series is \emph{stationary} if its mean and autocovariance do not
+depend on $t$. The $\adf$ test rejects the unit-root null when the
+statistic is more negative than a critical value ($-2.86$ at 5\%).
+
+\section{Volatility Models}
+
+For ARCH($p$) and GARCH($p, q$) (Ch.~8):
+
+\begin{align}
+\sigma_t^2 &= \omega + \sum_{i=1}^{p} \alpha_i \, r_{t-i}^2 & \text{(ARCH)} \\
+\sigma_t^2 &= \omega + \sum_{i=1}^{p} \alpha_i \, r_{t-i}^2 + \sum_{j=1}^{q} \beta_j \, \sigma_{t-j}^2 & \text{(GARCH)}
+\end{align}
+
+\begin{itemize}
+    \item \textbf{Persistence}: $\sum \alpha_i + \sum \beta_j$; values
+      $< 1$ give stationarity.
+    \item \textbf{EWMA} (RiskMetrics): $\sigma_t^2 = \lambda \sigma_{t-1}^2 + (1 - \lambda) r_{t-1}^2$, with $\lambda \approx 0.94$.
+    \item \textbf{Long-run variance}: $\sigma_\infty^2 = \omega / (1 - \sum \alpha_i - \sum \beta_j)$.
+\end{itemize}
+
+\section{Stochastic Processes}
+
+For geometric Brownian motion (Ch.~9):
+
+\begin{align}
+\frac{dS_t}{S_t} = \mu \, dt + \sigma \, dW_t, \qquad S_t = S_0 \exp\!\left( \left(\mu - \tfrac{1}{2}\sigma^2\right)t + \sigma W_t \right).
+\end{align}
+
+Here $W_t$ is a standard Wiener process with $W_0 = 0$,
+$\Cov(W_s, W_t) = \min(s, t)$.
+
+\section{Options (Black-Scholes)}
+
+\begin{center}
+\begin{tabular}{cl}
+\toprule
+\textbf{Symbol} & \textbf{Meaning} \\
+\midrule
+$S$ & Spot price \\
+$K$ & Strike price \\
+$r$ & Risk-free rate (continuously compounded) \\
+$\sigma$ & Volatility (annualised) \\
+$T$ & Time to maturity (years) \\
+$d_1, d_2$ & $\dfrac{\ln(S/K) + (r \pm \tfrac{1}{2}\sigma^2)T}{\sigma \sqrt{T}}$ \\
+$N(\cdot)$ & Standard normal CDF \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Pricing}
+
+\begin{align}
+\text{Call} &= S \, N(d_1) - K e^{-rT} N(d_2) \\
+\text{Put}  &= K e^{-rT} N(-d_2) - S \, N(-d_1)
+\end{align}
+
+\subsection{Greeks}
+
+\begin{center}
+\begin{tabular}{cll}
+\toprule
+\textbf{Greek} & \textbf{Call} & \textbf{Put} \\
+\midrule
+$\Delta$ & $N(d_1)$ & $N(d_1) - 1$ \\
+$\Gamma$ & $N'(d_1) / (S \sigma \sqrt{T})$ & same \\
+$\nu$ (vega) & $S N'(d_1) \sqrt{T}$ & same \\
+$\Theta$ & $-\dfrac{S N'(d_1) \sigma}{2\sqrt{T}} - r K e^{-rT} N(d_2)$ & $-\dfrac{S N'(d_1) \sigma}{2\sqrt{T}} + r K e^{-rT} N(-d_2)$ \\
+$\rho$ & $K T e^{-rT} N(d_2)$ & $-K T e^{-rT} N(-d_2)$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Portfolio Theory}
+
+\begin{itemize}
+    \item Weights $\mathbf{w} = (w_1, \dots, w_N)^\top$ with
+      $\sum w_i = 1$.
+    \item Expected returns $\boldsymbol{\mu} \in \mathbb{R}^N$.
+    \item Covariance matrix $\boldsymbol{\Sigma} \in \mathbb{R}^{N \times N}$.
+    \item Portfolio return $\mu_p = \mathbf{w}^\top \boldsymbol{\mu}$.
+    \item Portfolio volatility $\sigma_p = \sqrt{\mathbf{w}^\top \boldsymbol{\Sigma} \mathbf{w}}$.
+\end{itemize}
+
+\subsection{Frontier}
+
+\begin{description}
+    \item[Minimum variance] $\argmin_{\mathbf{w}} \mathbf{w}^\top \boldsymbol{\Sigma} \mathbf{w}$ subject to $\mathbf{1}^\top \mathbf{w} = 1$.
+    \item[Efficient frontier] Add constraint $\mathbf{w}^\top \boldsymbol{\mu} = \mu_{\text{target}}$.
+    \item[Tangency (max Sharpe)] $\argmax_{\mathbf{w}} \dfrac{\mathbf{w}^\top \boldsymbol{\mu} - r_f}{\sqrt{\mathbf{w}^\top \boldsymbol{\Sigma} \mathbf{w}}}$.
+    \item[CML] $\mu_p = r_f + \sharpe_{\text{tan}} \cdot \sigma_p$.
+    \item[Two-fund separation] $y = \sigma_p / \sigma_{\text{tan}}$ in tangency, $1 - y$ in risk-free.
+\end{description}
+
+\section{Factor Models}
+
+For a factor model with $K$ factors (Ch.~12):
+
+\begin{align}
+r_i = \alpha_i + \sum_{k=1}^{K} \beta_{i,k} f_k + \varepsilon_i,
+\qquad \Cov(f_k, \varepsilon_i) = 0.
+\end{align}
+
+\begin{itemize}
+    \item \textbf{CAPM} ($K=1$): single market factor $f = r_m - r_f$.
+    \item \textbf{Fama-French 3-factor} ($K=3$): market, size (SMB), value (HML).
+    \item \textbf{PCA}: factors are eigenvectors of the covariance matrix;
+      the $k$-th factor explains $\lambda_k / \sum_j \lambda_j$ of total variance.
+\end{itemize}
+
+\section{Market Microstructure}
+
+\begin{center}
+\begin{tabular}{cl}
+\toprule
+\textbf{Symbol} & \textbf{Meaning} \\
+\midrule
+$P_b, P_a$ & Best bid, best ask \\
+$\text{spread}$ & $P_a - P_b$ \\
+$\text{mid}$ & $(P_a + P_b) / 2$ \\
+$\text{OFI}_t$ & Order flow imbalance at time $t$ (Ch.~13) \\
+$\text{VWAP}$ & Volume-weighted average price \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Market Impact (Almgren-Chriss)}
+
+\begin{align}
+\text{Impact} = \sigma \cdot \sqrt{\frac{Q}{\text{ADV}}}
+\end{align}
+
+where $Q$ is the order size, $\sigma$ the daily volatility, and ADV the
+average daily volume. The execution cost decomposes as
+$\text{total} = \text{spread} + \text{impact}$, all in absolute return
+units (multiply by $10^4$ for basis points).
+
+\section{AFML Backtesting}
+
+\begin{itemize}
+    \item \textbf{Triple barrier} (Ch.~14): take-profit $\phi$, stop-loss
+      $\psi$, time barrier $\tau$. Label is $+1, -1, 0$ by which barrier
+      hits first.
+    \item \textbf{Purged $k$-fold}: each test fold is purged of samples
+      whose label window overlaps the training fold; an embargo period
+      $\rho$ prevents leakage near fold boundaries.
+    \item \textbf{Kelly}: $f^* = \dfrac{\mu}{\sigma^2}$ for a single asset;
+      fractional Kelly uses $f = c \, f^*$ with $c \in (0, 1]$.
+    \item \textbf{WFE} (Walk-Forward Efficiency):
+      $\sharpe_{\text{oos}} / \sharpe_{\text{is}}$.
+\end{itemize}
+
+\section{Common Subscripts}
+
+\begin{center}
+\begin{tabular}{cl}
+\toprule
+\textbf{Subscript} & \textbf{Meaning} \\
+\midrule
+$t$ & Time index \\
+$i, j$ & Asset index \\
+$k$ & Lag or factor index \\
+$p$ & Portfolio \\
+$f$ & Risk-free \\
+$m$ & Market \\
+$\infty$ & Long-run / steady state \\
+\bottomrule
+\end{tabular}
+\end{center}

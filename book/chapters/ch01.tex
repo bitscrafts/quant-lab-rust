@@ -21,7 +21,7 @@ a fraud detection system. Along the way, we learn:
 \end{itemize}
 
 \begin{keyinsight}
-This is not throwaway code. Every component we build follows a \textbf{library-first design}---composable, testable, and reusable in future projects like \crate{b3-swing-trading} and \crate{stock-sim}.
+This is not throwaway code. Every component we build follows a \textbf{library-first design}---composable, testable, and reusable across future projects.
 \end{keyinsight}
 
 \section{Introduction: Why Fraud Detection?}
@@ -323,7 +323,7 @@ This implementation will evolve into \crate{quant-lab}. Before writing any struc
 \texttt{DataSource}
 }
 
-While Phase 1 uses concrete types, future phases will extract traits:
+While this chapter uses concrete types, later chapters extract traits:
 
 \begin{lstlisting}[language=Rust]
 // Future: trait-based design
