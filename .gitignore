@@ -35,3 +35,7 @@ Cargo.lock
 # Session files (not tracked)
 HANDOFF.md
 CLAUDE.md
+
+# Local documentation and specs (not tracked)
+docs/
+specs/
