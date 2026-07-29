@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 //! Shared utilities for quant-lib examples.
 //!
 //! Provides a minimal CSV reader for the bundled `stock_prices.csv`
