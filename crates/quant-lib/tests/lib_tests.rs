@@ -265,6 +265,7 @@ fn t17_full_pipeline() {
 // =========================================================================
 
 #[test]
+#[allow(clippy::assertions_on_constants)]
 fn t18_feature_flags() {
     // With default features, "all" is enabled and all modules are
     // visible. Verify the feature is reported correctly.

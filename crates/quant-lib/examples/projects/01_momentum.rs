@@ -22,6 +22,7 @@ const REBAL: usize = 21;
 const N_LONG: usize = 2;
 const N_SHORT: usize = 2;
 
+#[allow(clippy::needless_range_loop)]
 fn main() {
     println!("=== Project 1: Cross-Sectional Momentum ===\n");
 
