@@ -147,6 +147,7 @@ fn exercise_1() {
     );
 }
 
+#[allow(clippy::needless_range_loop)]
 fn exercise_2() {
     println!("2. Local volatility surface (convexity of recovered IV):");
     // Synthetic local-vol pricer via explicit Euler on a (S, t) grid.
