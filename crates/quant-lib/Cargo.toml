@@ -36,3 +36,83 @@ backtest = ["core", "timeseries", "portfolio"]
 
 [dev-dependencies]
 approx = "0.5"
+
+# Phase 16 exercise solutions (chapters 1-14). Each file lives in
+# `examples/solutions/` and is registered explicitly because cargo's
+# auto-discovery does not recurse into subdirectories.
+[[example]]
+name = "solutions-ch01_fraud_solutions"
+path = "examples/solutions/ch01_fraud_solutions.rs"
+
+[[example]]
+name = "solutions-ch02_loan_solutions"
+path = "examples/solutions/ch02_loan_solutions.rs"
+
+[[example]]
+name = "solutions-ch03_stocks_solutions"
+path = "examples/solutions/ch03_stocks_solutions.rs"
+
+[[example]]
+name = "solutions-ch04_returns_solutions"
+path = "examples/solutions/ch04_returns_solutions.rs"
+
+[[example]]
+name = "solutions-ch05_backtest_solutions"
+path = "examples/solutions/ch05_backtest_solutions.rs"
+
+[[example]]
+name = "solutions-ch06_moments_solutions"
+path = "examples/solutions/ch06_moments_solutions.rs"
+
+[[example]]
+name = "solutions-ch07_timeseries_solutions"
+path = "examples/solutions/ch07_timeseries_solutions.rs"
+
+[[example]]
+name = "solutions-ch08_volatility_solutions"
+path = "examples/solutions/ch08_volatility_solutions.rs"
+
+[[example]]
+name = "solutions-ch09_stochastic_solutions"
+path = "examples/solutions/ch09_stochastic_solutions.rs"
+
+[[example]]
+name = "solutions-ch10_options_solutions"
+path = "examples/solutions/ch10_options_solutions.rs"
+
+[[example]]
+name = "solutions-ch11_portfolio_solutions"
+path = "examples/solutions/ch11_portfolio_solutions.rs"
+
+[[example]]
+name = "solutions-ch12_factors_solutions"
+path = "examples/solutions/ch12_factors_solutions.rs"
+
+[[example]]
+name = "solutions-ch13_microstructure_solutions"
+path = "examples/solutions/ch13_microstructure_solutions.rs"
+
+[[example]]
+name = "solutions-ch14_afml_solutions"
+path = "examples/solutions/ch14_afml_solutions.rs"
+
+# Phase 16 real-world projects.
+[[example]]
+name = "projects-01_momentum"
+path = "examples/projects/01_momentum.rs"
+
+[[example]]
+name = "projects-02_pairs_trading"
+path = "examples/projects/02_pairs_trading.rs"
+
+[[example]]
+name = "projects-03_risk_parity"
+path = "examples/projects/03_risk_parity.rs"
+
+[[example]]
+name = "projects-04_options_mm"
+path = "examples/projects/04_options_mm.rs"
+
+[[example]]
+name = "projects-05_afml_pipeline"
+path = "examples/projects/05_afml_pipeline.rs"

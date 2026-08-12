@@ -113,18 +113,20 @@ impl FactorModel for Pca {
 /// use quant_factors::FamaFrench3;
 /// use quant_core::FactorModel;
 ///
-/// // Factor returns: [Mkt-Rf, SMB, HML]
+/// // Factor returns: [Mkt-Rf, SMB, HML] (need at least 5 rows)
 /// let factors = vec![
 ///     vec![0.01, 0.002, 0.001],
 ///     vec![-0.005, 0.001, -0.001],
 ///     vec![0.015, -0.001, 0.002],
+///     vec![0.008, 0.000, 0.001],
+///     vec![0.012, 0.003, -0.002],
 /// ];
 ///
 /// let mut model = FamaFrench3::new(factors);
 ///
-/// // Asset excess returns
-/// let asset_returns = vec![0.012, -0.004, 0.018];
-/// model.fit(&vec![asset_returns.clone()]).unwrap();
+/// // Asset excess returns (same length as factors)
+/// let asset_returns = vec![0.012, -0.004, 0.018, 0.009, 0.015];
+/// model.fit(std::slice::from_ref(&asset_returns)).unwrap();
 ///
 /// let exposures = model.exposures(&asset_returns).unwrap();
 /// assert_eq!(exposures.len(), 3); // beta_mkt, beta_smb, beta_hml
@@ -289,7 +291,7 @@ mod tests {
             .collect();
 
         let mut model = FamaFrench3::new(factors);
-        model.fit(&vec![asset_returns.clone()]).unwrap();
+        model.fit(std::slice::from_ref(&asset_returns)).unwrap();
 
         let exposures = model.exposures(&asset_returns).unwrap();
 
@@ -319,7 +321,7 @@ mod tests {
             .collect();
 
         let mut model = FamaFrench3::new(factors);
-        model.fit(&vec![asset_returns.clone()]).unwrap();
+        model.fit(std::slice::from_ref(&asset_returns)).unwrap();
 
         let (factor_comp, idio_comp) = model.decompose(&asset_returns).unwrap();
 

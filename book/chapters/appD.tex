@@ -14,6 +14,65 @@ running the corresponding example in \crate{quant-lib} with minor
 modifications. The goal is understanding, not memorisation.
 \end{keyinsight}
 
+\section*{Runnable Code}
+\label{app:solutions:code}
+
+Every exercise in this appendix has a complete, runnable Rust
+solution in the \crate{quant-lib} example suite. The 70 solutions
+span chapters 1--14 and live in
+\texttt{crates/quant-lab/crates/quant-lib/examples/solutions/}, one
+file per chapter:
+
+\begin{center}
+\begin{tabular}{lll}
+\textbf{Chapter} & \textbf{Topic} & \textbf{Example target} \\
+1  & Credit Card Fraud       & \texttt{solutions-ch01\_fraud\_solutions} \\
+2  & Loan Default            & \texttt{solutions-ch02\_loan\_solutions} \\
+3  & Market Data             & \texttt{solutions-ch03\_stocks\_solutions} \\
+4  & Returns \& Volatility   & \texttt{solutions-ch04\_returns\_solutions} \\
+5  & Backtesting             & \texttt{solutions-ch05\_backtest\_solutions} \\
+6  & Statistical Foundations & \texttt{solutions-ch06\_moments\_solutions} \\
+7  & Time Series             & \texttt{solutions-ch07\_timeseries\_solutions} \\
+8  & Volatility Models       & \texttt{solutions-ch08\_volatility\_solutions} \\
+9  & Stochastic Processes    & \texttt{solutions-ch09\_stochastic\_solutions} \\
+10 & Options Pricing         & \texttt{solutions-ch10\_options\_solutions} \\
+11 & Portfolio Optimization  & \texttt{solutions-ch11\_portfolio\_solutions} \\
+12 & Factor Models           & \texttt{solutions-ch12\_factors\_solutions} \\
+13 & Market Microstructure   & \texttt{solutions-ch13\_microstructure\_solutions} \\
+14 & AFML Backtesting        & \texttt{solutions-ch14\_afml\_solutions} \\
+\end{tabular}
+\end{center}
+
+Run any solution and inspect its output:
+\begin{lstlisting}[language=bash]
+cargo run -p quant-lib --example solutions-ch01_fraud_solutions
+\end{lstlisting}
+Each file also carries one \texttt{\#\[test\]} per exercise (70 tests
+total), runnable with:
+\begin{lstlisting}[language=bash]
+cargo test -p quant-lib --examples
+\end{lstlisting}
+
+Five end-to-end real-world projects tie the chapters together and live
+in \texttt{crates/quant-lab/crates/quant-lib/examples/projects/}:
+
+\begin{center}
+\begin{tabular}{lll}
+\textbf{Project} & \textbf{Level} & \textbf{Example target} \\
+1 & Cross-sectional momentum    & \texttt{projects-01\_momentum} \\
+2 & Pairs trading (cointegration) & \texttt{projects-02\_pairs\_trading} \\
+3 & Risk-parity portfolio        & \texttt{projects-03\_risk\_parity} \\
+4 & Options market making        & \texttt{projects-04\_options\_mm} \\
+5 & Full AFML pipeline           & \texttt{projects-05\_afml\_pipeline} \\
+\end{tabular}
+\end{center}
+
+The project catalogue and per-project metrics are documented in
+\texttt{examples/projects/README.md}. The prose in the remainder of
+this appendix explains the approach, the key formula, and the
+qualitative finding for each exercise; the runnable code is the
+single source of truth for the implementation.
+
 \section*{Chapter 1: Credit Card Fraud}
 
 \paragraph{1. Threshold Sensitivity.}
